@@ -67,8 +67,8 @@ int main() {
   std::filesystem::path projRoot =
       std::filesystem::path(PROJECT_ROOT);
 
-  Shader shader(projRoot / "src/vertShader3.vert",
-                projRoot / "src/fragShader3.frag");
+  Shader shader(projRoot / "src/vertShader.vert",
+                projRoot / "src/fragShader.frag");
 
   unsigned int textures[2];
   glGenTextures(2, textures);
@@ -120,8 +120,8 @@ int main() {
   stbi_image_free(data);
 
   shader.Use();
-  shader.SetInt("texture_1", 0);
-  shader.SetInt("texture_2", 1);
+  shader.SetUniform("texture_1", 0);
+  shader.SetUniform("texture_2", 1);
 
   glBindVertexArray(VAO);
   glActiveTexture(GL_TEXTURE0);
@@ -151,12 +151,12 @@ int main() {
 
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
       visibility += 0.01f;
-      shader.SetFloat("visibility", glm::clamp(visibility,0.0f,1.0f));
+      shader.SetUniform("visibility", glm::clamp(visibility,0.0f,1.0f));
     }
 
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
       visibility -= 0.01f;
-      shader.SetFloat("visibility", glm::clamp(visibility,0.0f,1.0f));
+      shader.SetUniform("visibility", glm::clamp(visibility,0.0f,1.0f));
     }
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
