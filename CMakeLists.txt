@@ -13,7 +13,7 @@ pkg_check_modules(GLFW REQUIRED glfw3)
 
 # ===== 可执行文件 =====
 add_executable(app
-    src/transform.cpp
+    src/main.cpp
     src/Window.cpp
     src/Shader.cpp
     src/glad.c

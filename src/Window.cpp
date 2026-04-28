@@ -23,7 +23,8 @@ GLFWwindow *Window::WindowInit(bool isTransparent) {
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
   }
 
-  GLFWwindow *window = glfwCreateWindow(800, 600, "Suki", NULL, NULL);
+  GLFWwindow *window = glfwCreateWindow(Width, Height, "Suki", NULL, NULL);
+  glfwWindowHintString(GLFW_WAYLAND_APP_ID, "Suki");
   if (window == NULL) {
     std::cout << "Failed to create GLFW window\n";
     return NULL;
@@ -35,7 +36,10 @@ GLFWwindow *Window::WindowInit(bool isTransparent) {
     return NULL;
   }
 
-  glViewport(0, 0, 800, 600);
+  // glViewport(0, 0, Width, Height);
+  int fbWidth, fbHeight;
+  glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+  glViewport(0, 0, fbWidth, fbHeight);
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
   return window;
 }
