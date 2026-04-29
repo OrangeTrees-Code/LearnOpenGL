@@ -1,12 +1,13 @@
-#include "Shader.hpp"
+#include "Shader.tpp"
+// OpenGL loader
 #include <glad/glad.h>
+// Windowing
 #include <GLFW/glfw3.h>
 #include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
-
 
 Shader::Shader(std::filesystem::path vertexShaderSrc,
                std::filesystem::path fragmentShaderSrc) {
@@ -102,7 +103,7 @@ void Shader::Use() const { glUseProgram(Get_ID()); }
 
 unsigned int Shader::Get_ID() const { return ID_; }
 
-int Shader::GetUniformLocation(const std::string &name) const{
+int Shader::GetUniformLocation(const std::string &name) const {
   if (uniformCache_.contains(name)) {
     return uniformCache_[name];
   }
@@ -111,6 +112,3 @@ int Shader::GetUniformLocation(const std::string &name) const{
   uniformCache_[name] = location;
   return location;
 }
-
-
-

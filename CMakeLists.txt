@@ -17,6 +17,9 @@ add_executable(app
     src/Window.cpp
     src/Shader.cpp
     src/glad.c
+    src/Camera.cpp
+    src/Cursor.cpp
+    src/Global.hpp
 )
 
 # ===== 头文件目录 =====
