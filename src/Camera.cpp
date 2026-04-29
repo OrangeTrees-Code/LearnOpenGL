@@ -6,8 +6,8 @@
 #include <glm/trigonometric.hpp>
 
 glm::mat4 Camera::GetViewMatrix() {
-  // return glm::lookAt(Position, Position + Front, Up);
-  return Global::Instance().MyLookAt(Position, Position + Front, Up);
+  return glm::lookAt(Position, Position + Front, Up);
+  // return Global::Instance().MyLookAt(Position, Position + Front, Up);
 }
 
 glm::mat4 Camera::GetProjectionMatrix() {
