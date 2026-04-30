@@ -13,13 +13,13 @@ pkg_check_modules(GLFW REQUIRED glfw3)
 
 # ===== 可执行文件 =====
 add_executable(app
-    src/main.cpp
     src/Window.cpp
     src/Shader.cpp
     src/glad.c
     src/Camera.cpp
     src/Cursor.cpp
     src/Global.hpp
+    src/Main.cpp
 )
 
 # ===== 头文件目录 =====
