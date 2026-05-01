@@ -7,7 +7,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/ext/quaternion_geometric.hpp>
 #include <glm/trigonometric.hpp>
-#include <iostream>
+#include <stdexcept>
 
 void Window::framebuffer_size_callback(GLFWwindow *window, int width,
                                        int height) {
@@ -50,14 +50,12 @@ GLFWwindow *Window::WindowInit(bool isTransparent) {
   GLFWwindow *window = glfwCreateWindow(Width, Height, "Suki", NULL, NULL);
   glfwWindowHintString(GLFW_WAYLAND_APP_ID, "Suki");
   if (window == NULL) {
-    std::cout << "Failed to create GLFW window\n";
-    return NULL;
+    throw std::runtime_error("Failed to create GLFW window");
   }
   glfwMakeContextCurrent(window);
 
   if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-    std::cout << "Failed to initialize GLAD" << std::endl;
-    return NULL;
+    throw std::runtime_error("Failed to initialize GLAD");
   }
 
   // glViewport(0, 0, Width, Height);

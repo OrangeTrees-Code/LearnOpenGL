@@ -1,10 +1,12 @@
 // OpenGL loader
+#include <cmath>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <glad/glad.h>
 // Windowing
 #include "Camera.hpp"
+#include "Color.hpp"
 #include "Shader.tpp"
 #include "Window.hpp"
 #include <GLFW/glfw3.h>
@@ -49,19 +51,16 @@ int main() {
         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  -0.5f, 0.5f,  0.5f,
         0.0f,  1.0f,  0.0f,  -0.5f, 0.5f,  -0.5f, 0.0f,  1.0f,  0.0f};
 
-    unsigned int VAO, VBO[2];
+    unsigned int VAO, VBO;
     glGenVertexArrays(1, &VAO);
-    glGenBuffers(2, VBO);
+    glGenBuffers(1, &VBO);
 
     glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
                           (void *)0);
     glEnableVertexAttribArray(0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
                           (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
@@ -75,14 +74,18 @@ int main() {
     Shader objShader(ProjRoot / "src/vertShader.vert",
                      ProjRoot / "src/objectFrag.frag");
 
-    glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
+    glm::vec3 lightColor(1.0f, 0.0f, 0.0f);
     objShader.Use();
-    objShader.SetUniform("objectColor", glm::vec3(1.0f, 0.5f, 0.31f));
-    objShader.SetUniform("lightColor", lightColor);
-    objShader.SetUniform("ambientStrength", 0.1f);
-
-    objShader.SetUniform("specularStrength", 0.5f);
-    objShader.SetUniform("Shininess", 32);
+    objShader.SetUniform("light.color", lightColor);
+    // 也许可以考虑多个光源，而不是硬编码第一个光源
+    objShader.SetUniform("light.position", lightPos[0]);
+    objShader.SetUniform("light.ambientStrength", glm::vec3(0.2f, 0.2f, 0.2f));
+    objShader.SetUniform("light.diffuseStrength", glm::vec3(0.5f, 0.5f, 0.5f));
+    objShader.SetUniform("light.specularStrength", glm::vec3(1.0f, 1.0f, 1.0f));
+    objShader.SetUniform("material.ambientColor", glm::vec3(1.0f, 0.5f, 0.31f));
+    objShader.SetUniform("material.diffuseColor", glm::vec3(1.0f, 0.5f, 0.31f));
+    objShader.SetUniform("material.specularColor", glm::vec3(0.5f, 0.5f, 0.5f));
+    objShader.SetUniform("material.shininess", 32.0f);
 
     Shader lightShader(ProjRoot / "src/vertShader.vert",
                        ProjRoot / "src/lightFrag.frag");
@@ -94,13 +97,22 @@ int main() {
 
     glEnable(GL_DEPTH_TEST);
 
+    float time;
+
     while (!glfwWindowShouldClose(window.Get_Window_Ptr())) {
       window.processInput(camera);
 
       glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+      time = glfwGetTime();
+      float hue = std::fmod(time, 1.0f);
+      glm::vec3 hsv = Color::RGBtoHSV(lightColor);
+      hsv.x = std::fmod(hsv.x + hue, 360.0f);
+      lightColor = Color::HSVtoRGB(hsv);
+
       objShader.Use();
+      objShader.SetUniform("light.color", lightColor);
 
       objShader.SetUniform("viewPos", camera.Position);
 
@@ -121,9 +133,6 @@ int main() {
         lightPos[0].x -= window.deltaTime * 1;
       }
 
-      // 也许可以考虑多个光源，而不是硬编码第一个光源
-      objShader.SetUniform("lightPos", lightPos[0]);
-
       for (auto &pos : objectPos) {
         glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
 
@@ -133,6 +142,8 @@ int main() {
       }
 
       lightShader.Use();
+      lightShader.SetUniform("lightColor", lightColor);
+
       lightShader.SetUniform("view", view);
       lightShader.SetUniform("projection", projection);
 
@@ -154,7 +165,7 @@ int main() {
     glBindVertexArray(0);
 
     glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(2, VBO);
+    glDeleteBuffers(1, &VBO);
 
   } catch (std::exception &exce) {
     std::println("{}", exce.what());

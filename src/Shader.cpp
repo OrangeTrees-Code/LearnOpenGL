@@ -8,6 +8,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <stdexcept>
 
 Shader::Shader(std::filesystem::path vertexShaderSrc,
                std::filesystem::path fragmentShaderSrc) {
@@ -31,7 +32,7 @@ Shader::Shader(std::filesystem::path vertexShaderSrc,
     buffer_fragSrc << fragSrc.rdbuf();
     fragSrc.close();
   } catch (std::ifstream::failure e) {
-    std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+    throw std::runtime_error("ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ");
   }
 
   unsigned int vertexShader =
@@ -56,8 +57,7 @@ unsigned int Shader::InitVertexShader(const char *vertexShaderSource) {
 
   if (!success_) {
     glGetShaderInfoLog(vertexShader, sizeof(infoLog_), NULL, infoLog_);
-    std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n"
-              << infoLog_ << std::endl;
+    throw std::runtime_error("ERROR::SHADER::VERTEX::COMPILATION_FAILED");
   }
 
   return vertexShader;
@@ -73,8 +73,7 @@ unsigned int Shader::InitFragmentShader(const char *fragmentShaderSource) {
 
   if (!success_) {
     glGetShaderInfoLog(fragmentShader, sizeof(infoLog_), NULL, infoLog_);
-    std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n"
-              << infoLog_ << std::endl;
+    throw std::runtime_error("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED");
   }
 
   return fragmentShader;
@@ -92,8 +91,7 @@ unsigned int Shader::InitShaderProgram(unsigned int vertexShader,
   glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success_);
   if (!success_) {
     glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog_);
-    std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n"
-              << infoLog_ << std::endl;
+    throw std::runtime_error("ERROR::SHADER::PROGRAM::LINKING_FAILED");
   }
 
   return shaderProgram;
@@ -109,6 +107,9 @@ int Shader::GetUniformLocation(const std::string &name) const {
   }
 
   int location = glGetUniformLocation(this->Get_ID(), name.c_str());
+  if (location == -1) {
+    throw std::runtime_error("Uniform not found!: " + name);
+  }
   uniformCache_[name] = location;
   return location;
 }
