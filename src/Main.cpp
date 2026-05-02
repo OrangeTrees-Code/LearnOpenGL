@@ -11,6 +11,8 @@
 #include <GLFW/glfw3.h>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/trigonometric.hpp>
 #include <print>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -65,7 +67,12 @@ int main() {
         1.0f,  0.0f,  -0.5f, 0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  0.0f,
         -0.5f, 0.5f,  -0.5f, 0.0f,  1.0f,  0.0f,  0.0f,  1.0f};
 
-    std::vector<glm::vec3> objectPos{glm::vec3(0.0f, 0.0f, 0.0f)};
+    std::vector<glm::vec3> objectPos{
+        glm::vec3(0.0f, 0.0f, 0.0f),    glm::vec3(2.0f, 5.0f, -15.0f),
+        glm::vec3(-1.5f, -2.2f, -2.5f), glm::vec3(-3.8f, -2.0f, -12.3f),
+        glm::vec3(2.4f, -0.4f, -3.5f),  glm::vec3(-1.7f, 3.0f, -7.5f),
+        glm::vec3(1.3f, -2.0f, -2.5f),  glm::vec3(1.5f, 2.0f, -2.5f),
+        glm::vec3(1.5f, 0.2f, -1.5f),   glm::vec3(-1.3f, 1.0f, -1.5f)};
 
     std::vector<glm::vec3> lightPos{glm::vec3(1.2f, 1.0f, 2.0f)};
 
@@ -110,7 +117,17 @@ int main() {
     objShader.Use();
     objShader.SetUniform("light.color", lightColor);
     // 也许可以考虑多个光源，而不是硬编码第一个光源
-    objShader.SetUniform("light.position", lightPos[0]);
+    // objShader.SetUniform("light.vector", glm::vec4(lightPos[0], 1.0f));
+    // objShader.SetUniform("light.vector", glm::vec4(-0.2f, -1.0f, -0.3f,
+    // 0.0f));
+
+    objShader.SetUniform("light.position", camera.Position);
+    objShader.SetUniform("light.direction", camera.Front);
+    objShader.SetUniform("light.cutOff", glm::cos(glm::radians(12.5f)));
+    objShader.SetUniform("light.outerCutOff", glm::cos(glm::radians(17.5f)));
+    // objShader.SetUniform("light.constant", 1.0f);
+    // objShader.SetUniform("light.linear", 0.09f);
+    // objShader.SetUniform("light.quadratic", 0.032f);
     objShader.SetUniform("light.ambientStrength", glm::vec3(0.2f, 0.2f, 0.2f));
     objShader.SetUniform("light.diffuseStrength", glm::vec3(0.5f, 0.5f, 0.5f));
     objShader.SetUniform("light.specularStrength", glm::vec3(1.0f, 1.0f, 1.0f));
@@ -148,6 +165,9 @@ int main() {
 #pragma region Rendering
       objShader.Use();
 
+      objShader.SetUniform("light.position", camera.Position);
+      objShader.SetUniform("light.direction", camera.Front);
+
       objShader.SetUniform("viewPos", camera.Position);
 
       auto view = camera.GetViewMatrix();
@@ -156,8 +176,10 @@ int main() {
       objShader.SetUniform("view", view);
       objShader.SetUniform("projection", projection);
 
-      for (auto &pos : objectPos) {
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
+      for (int i = 0; i < objectPos.size(); i++) {
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), objectPos[i]);
+        model = glm::rotate(model, glm::radians(20.0f * i),
+                            glm::vec3(1.0f, 1.0f, 1.0f));
 
         objShader.SetUniform("model", model);
 
