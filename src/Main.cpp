@@ -1,5 +1,4 @@
 // OpenGL loader
-#include <cmath>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -13,6 +12,12 @@
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <print>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+#include <stdexcept>
+
+unsigned int LoadTexture(std::filesystem::path path2Tex, int slotIndex);
+
 int main() {
   try {
     Camera camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f),
@@ -20,37 +25,57 @@ int main() {
 
     Window window(800, 600, true, camera, 0.5f, 2.0f);
 
+#pragma region Data
+
     float vertices[] = {
-        -0.5f, -0.5f, -0.5f, 0.0f,  0.0f,  -1.0f, 0.5f,  -0.5f, -0.5f,
-        0.0f,  0.0f,  -1.0f, 0.5f,  0.5f,  -0.5f, 0.0f,  0.0f,  -1.0f,
-        0.5f,  0.5f,  -0.5f, 0.0f,  0.0f,  -1.0f, -0.5f, 0.5f,  -0.5f,
-        0.0f,  0.0f,  -1.0f, -0.5f, -0.5f, -0.5f, 0.0f,  0.0f,  -1.0f,
+        // positions          // normals           // texture coords
+        -0.5f, -0.5f, -0.5f, 0.0f,  0.0f,  -1.0f, 0.0f,  0.0f,  0.5f,  -0.5f,
+        -0.5f, 0.0f,  0.0f,  -1.0f, 1.0f,  0.0f,  0.5f,  0.5f,  -0.5f, 0.0f,
+        0.0f,  -1.0f, 1.0f,  1.0f,  0.5f,  0.5f,  -0.5f, 0.0f,  0.0f,  -1.0f,
+        1.0f,  1.0f,  -0.5f, 0.5f,  -0.5f, 0.0f,  0.0f,  -1.0f, 0.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f,  0.0f,  -1.0f, 0.0f,  0.0f,
 
-        -0.5f, -0.5f, 0.5f,  0.0f,  0.0f,  1.0f,  0.5f,  -0.5f, 0.5f,
-        0.0f,  0.0f,  1.0f,  0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  -0.5f, 0.5f,  0.5f,
-        0.0f,  0.0f,  1.0f,  -0.5f, -0.5f, 0.5f,  0.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f, 0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,  0.5f,  -0.5f,
+        0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  0.0f,  0.5f,  0.5f,  0.5f,  0.0f,
+        0.0f,  1.0f,  1.0f,  1.0f,  0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        1.0f,  1.0f,  -0.5f, 0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f, 0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
 
-        -0.5f, 0.5f,  0.5f,  -1.0f, 0.0f,  0.0f,  -0.5f, 0.5f,  -0.5f,
-        -1.0f, 0.0f,  0.0f,  -0.5f, -0.5f, -0.5f, -1.0f, 0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f,  0.0f,  -0.5f, -0.5f, 0.5f,
-        -1.0f, 0.0f,  0.0f,  -0.5f, 0.5f,  0.5f,  -1.0f, 0.0f,  0.0f,
+        -0.5f, 0.5f,  0.5f,  -1.0f, 0.0f,  0.0f,  1.0f,  0.0f,  -0.5f, 0.5f,
+        -0.5f, -1.0f, 0.0f,  0.0f,  1.0f,  1.0f,  -0.5f, -0.5f, -0.5f, -1.0f,
+        0.0f,  0.0f,  0.0f,  1.0f,  -0.5f, -0.5f, -0.5f, -1.0f, 0.0f,  0.0f,
+        0.0f,  1.0f,  -0.5f, -0.5f, 0.5f,  -1.0f, 0.0f,  0.0f,  0.0f,  0.0f,
+        -0.5f, 0.5f,  0.5f,  -1.0f, 0.0f,  0.0f,  1.0f,  0.0f,
 
-        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.5f,  0.5f,  -0.5f,
-        1.0f,  0.0f,  0.0f,  0.5f,  -0.5f, -0.5f, 1.0f,  0.0f,  0.0f,
-        0.5f,  -0.5f, -0.5f, 1.0f,  0.0f,  0.0f,  0.5f,  -0.5f, 0.5f,
-        1.0f,  0.0f,  0.0f,  0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,  0.5f,  0.5f,
+        -0.5f, 1.0f,  0.0f,  0.0f,  1.0f,  1.0f,  0.5f,  -0.5f, -0.5f, 1.0f,
+        0.0f,  0.0f,  0.0f,  1.0f,  0.5f,  -0.5f, -0.5f, 1.0f,  0.0f,  0.0f,
+        0.0f,  1.0f,  0.5f,  -0.5f, 0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
 
-        -0.5f, -0.5f, -0.5f, 0.0f,  -1.0f, 0.0f,  0.5f,  -0.5f, -0.5f,
-        0.0f,  -1.0f, 0.0f,  0.5f,  -0.5f, 0.5f,  0.0f,  -1.0f, 0.0f,
-        0.5f,  -0.5f, 0.5f,  0.0f,  -1.0f, 0.0f,  -0.5f, -0.5f, 0.5f,
-        0.0f,  -1.0f, 0.0f,  -0.5f, -0.5f, -0.5f, 0.0f,  -1.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f,  -1.0f, 0.0f,  0.0f,  1.0f,  0.5f,  -0.5f,
+        -0.5f, 0.0f,  -1.0f, 0.0f,  1.0f,  1.0f,  0.5f,  -0.5f, 0.5f,  0.0f,
+        -1.0f, 0.0f,  1.0f,  0.0f,  0.5f,  -0.5f, 0.5f,  0.0f,  -1.0f, 0.0f,
+        1.0f,  0.0f,  -0.5f, -0.5f, 0.5f,  0.0f,  -1.0f, 0.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f,  -1.0f, 0.0f,  0.0f,  1.0f,
 
-        -0.5f, 0.5f,  -0.5f, 0.0f,  1.0f,  0.0f,  0.5f,  0.5f,  -0.5f,
-        0.0f,  1.0f,  0.0f,  0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  -0.5f, 0.5f,  0.5f,
-        0.0f,  1.0f,  0.0f,  -0.5f, 0.5f,  -0.5f, 0.0f,  1.0f,  0.0f};
+        -0.5f, 0.5f,  -0.5f, 0.0f,  1.0f,  0.0f,  0.0f,  1.0f,  0.5f,  0.5f,
+        -0.5f, 0.0f,  1.0f,  0.0f,  1.0f,  1.0f,  0.5f,  0.5f,  0.5f,  0.0f,
+        1.0f,  0.0f,  1.0f,  0.0f,  0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        1.0f,  0.0f,  -0.5f, 0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  0.0f,
+        -0.5f, 0.5f,  -0.5f, 0.0f,  1.0f,  0.0f,  0.0f,  1.0f};
 
+    std::vector<glm::vec3> objectPos{glm::vec3(0.0f, 0.0f, 0.0f)};
+
+    std::vector<glm::vec3> lightPos{glm::vec3(1.2f, 1.0f, 2.0f)};
+
+    glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
+
+    std::filesystem::path ProjRoot(PROJECT_ROOT);
+
+#pragma endregion
+
+#pragma region Init_VAO_VBO
     unsigned int VAO, VBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -58,23 +83,30 @@ int main() {
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
                           (void *)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
                           (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    glad_glBindVertexArray(0);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                          (void *)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    glBindVertexArray(0);
+#pragma endregion
 
-    std::vector<glm::vec3> objectPos{glm::vec3(0.0f, 0.0f, 0.0f)};
+#pragma region Init_Texture
+    std::vector<unsigned int> textures(3);
+    textures[0] = LoadTexture(ProjRoot / "textures/container2.png", 0);
+    textures[1] =
+        LoadTexture(ProjRoot / "textures/lighting_maps_specular_color.png", 1);
+    // textures[2] = LoadTexture(ProjRoot / "textures/matrix.jpg", 2);
+#pragma endregion
 
-    std::vector<glm::vec3> lightPos{glm::vec3(1.2f, 1.0f, 2.0f)};
-
-    std::filesystem::path ProjRoot(PROJECT_ROOT);
+#pragma region Init_Shader
     Shader objShader(ProjRoot / "src/vertShader.vert",
                      ProjRoot / "src/objectFrag.frag");
 
-    glm::vec3 lightColor(1.0f, 0.0f, 0.0f);
     objShader.Use();
     objShader.SetUniform("light.color", lightColor);
     // 也许可以考虑多个光源，而不是硬编码第一个光源
@@ -82,9 +114,9 @@ int main() {
     objShader.SetUniform("light.ambientStrength", glm::vec3(0.2f, 0.2f, 0.2f));
     objShader.SetUniform("light.diffuseStrength", glm::vec3(0.5f, 0.5f, 0.5f));
     objShader.SetUniform("light.specularStrength", glm::vec3(1.0f, 1.0f, 1.0f));
-    objShader.SetUniform("material.ambientColor", glm::vec3(1.0f, 0.5f, 0.31f));
-    objShader.SetUniform("material.diffuseColor", glm::vec3(1.0f, 0.5f, 0.31f));
-    objShader.SetUniform("material.specularColor", glm::vec3(0.5f, 0.5f, 0.5f));
+    objShader.SetUniform("material.diffuseTex", 0);
+    objShader.SetUniform("material.specularTex", 1);
+    // objShader.SetUniform("material.emissionTex", 2);
     objShader.SetUniform("material.shininess", 32.0f);
 
     Shader lightShader(ProjRoot / "src/vertShader.vert",
@@ -92,46 +124,37 @@ int main() {
 
     lightShader.Use();
     lightShader.SetUniform("lightColor", lightColor);
+#pragma endregion
 
+#pragma region SetUp_Rendering
     glBindVertexArray(VAO);
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     float time;
+#pragma endregion
 
     while (!glfwWindowShouldClose(window.Get_Window_Ptr())) {
+#pragma region Before_Rendering
       window.processInput(camera);
 
       glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-      time = glfwGetTime();
-      float hue = std::fmod(time, 1.0f);
-      glm::vec3 hsv = Color::RGBtoHSV(lightColor);
-      hsv.x = std::fmod(hsv.x + hue, 360.0f);
-      lightColor = Color::HSVtoRGB(hsv);
+#pragma endregion
 
+#pragma region Rendering
       objShader.Use();
-      objShader.SetUniform("light.color", lightColor);
 
       objShader.SetUniform("viewPos", camera.Position);
-
-      glEnable(GL_BLEND);
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
       auto view = camera.GetViewMatrix();
       auto projection = camera.GetProjectionMatrix();
 
       objShader.SetUniform("view", view);
       objShader.SetUniform("projection", projection);
-
-      if (glfwGetKey(window.Get_Window_Ptr(), GLFW_KEY_LEFT) == GLFW_PRESS) {
-        lightPos[0].x += window.deltaTime * 1;
-      }
-
-      if (glfwGetKey(window.Get_Window_Ptr(), GLFW_KEY_RIGHT) == GLFW_PRESS) {
-        lightPos[0].x -= window.deltaTime * 1;
-      }
 
       for (auto &pos : objectPos) {
         glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
@@ -142,7 +165,6 @@ int main() {
       }
 
       lightShader.Use();
-      lightShader.SetUniform("lightColor", lightColor);
 
       lightShader.SetUniform("view", view);
       lightShader.SetUniform("projection", projection);
@@ -155,17 +177,22 @@ int main() {
 
         glDrawArrays(GL_TRIANGLES, 0, 36);
       }
+#pragma endregion
 
+#pragma region After_Rendering
       window.UpdateDeltaTime();
 
       glfwSwapBuffers(window.Get_Window_Ptr());
       glfwPollEvents();
+#pragma endregion
     }
 
+#pragma region FollowUp_Rendering
     glBindVertexArray(0);
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
+#pragma endregion
 
   } catch (std::exception &exce) {
     std::println("{}", exce.what());
@@ -175,4 +202,40 @@ int main() {
 
   glfwTerminate();
   return EXIT_SUCCESS;
+}
+
+unsigned int LoadTexture(std::filesystem::path path2Tex, int slotIndex) {
+  unsigned int texture;
+  glGenTextures(1, &texture);
+  glActiveTexture(GL_TEXTURE0 + slotIndex);
+  glBindTexture(GL_TEXTURE_2D, texture);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  int width, height, nrChannels;
+  unsigned char *data =
+      stbi_load(path2Tex.c_str(), &width, &height, &nrChannels, 0);
+  if (data != NULL) {
+    GLenum format;
+    if (nrChannels == 1)
+      format = GL_RED;
+    else if (nrChannels == 3)
+      format = GL_RGB;
+    else if (nrChannels == 4)
+      format = GL_RGBA;
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
+                 GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+  } else {
+    throw std::runtime_error("Failed to load texture");
+  }
+
+  stbi_image_free(data);
+
+  return texture;
 }
