@@ -14,6 +14,8 @@
 #include <glm/ext/vector_float3.hpp>
 #include <glm/trigonometric.hpp>
 #include <print>
+#include <string>
+#include <vector>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <stdexcept>
@@ -74,7 +76,9 @@ int main() {
         glm::vec3(1.3f, -2.0f, -2.5f),  glm::vec3(1.5f, 2.0f, -2.5f),
         glm::vec3(1.5f, 0.2f, -1.5f),   glm::vec3(-1.3f, 1.0f, -1.5f)};
 
-    std::vector<glm::vec3> lightPos{glm::vec3(1.2f, 1.0f, 2.0f)};
+    std::vector<glm::vec3> lightPos{
+        glm::vec3(0.7f, 0.2f, 2.0f), glm::vec3(2.3f, -3.3f, -4.0f),
+        glm::vec3(-4.0f, 2.0f, -12.0f), glm::vec3(0.0f, 0.0f, -3.0f)};
 
     glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
@@ -115,26 +119,42 @@ int main() {
                      ProjRoot / "src/objectFrag.frag");
 
     objShader.Use();
-    objShader.SetUniform("light.color", lightColor);
-    // 也许可以考虑多个光源，而不是硬编码第一个光源
-    // objShader.SetUniform("light.vector", glm::vec4(lightPos[0], 1.0f));
-    // objShader.SetUniform("light.vector", glm::vec4(-0.2f, -1.0f, -0.3f,
-    // 0.0f));
-
-    objShader.SetUniform("light.position", camera.Position);
-    objShader.SetUniform("light.direction", camera.Front);
-    objShader.SetUniform("light.cutOff", glm::cos(glm::radians(12.5f)));
-    objShader.SetUniform("light.outerCutOff", glm::cos(glm::radians(17.5f)));
-    // objShader.SetUniform("light.constant", 1.0f);
-    // objShader.SetUniform("light.linear", 0.09f);
-    // objShader.SetUniform("light.quadratic", 0.032f);
-    objShader.SetUniform("light.ambientStrength", glm::vec3(0.2f, 0.2f, 0.2f));
-    objShader.SetUniform("light.diffuseStrength", glm::vec3(0.5f, 0.5f, 0.5f));
-    objShader.SetUniform("light.specularStrength", glm::vec3(1.0f, 1.0f, 1.0f));
     objShader.SetUniform("material.diffuseTex", 0);
     objShader.SetUniform("material.specularTex", 1);
-    // objShader.SetUniform("material.emissionTex", 2);
     objShader.SetUniform("material.shininess", 32.0f);
+
+    objShader.SetUniform("dirLight.intensity", glm::vec3(1.0f, 1.0f, 1.0f));
+    objShader.SetUniform("dirLight.direction", glm::vec3(-0.2f, -1.0f, -0.3f));
+    objShader.SetUniform("dirLight.ambient", glm::vec3(0.05f, 0.05f, 0.05f));
+    objShader.SetUniform("dirLight.diffuse", glm::vec3(0.4f, 0.4f, 0.4f));
+    objShader.SetUniform("dirLight.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+    for (int i = 0; i < lightPos.size(); i++) {
+      const std::string lightName = "pointLights[" + std::to_string(i) + "]";
+      objShader.SetUniform(lightName + ".intensity",
+                           glm::vec3(1.0f, 1.0f, 1.0f));
+      objShader.SetUniform(lightName + ".position", lightPos[i]);
+      objShader.SetUniform(lightName + ".ambient",
+                           glm::vec3(0.05f, 0.05f, 0.05f));
+      objShader.SetUniform(lightName + ".diffuse", glm::vec3(0.8f, 0.8f, 0.8f));
+      objShader.SetUniform(lightName + ".specular",
+                           glm::vec3(1.0f, 1.0f, 1.0f));
+      objShader.SetUniform(lightName + ".constant", 1.0f);
+      objShader.SetUniform(lightName + ".linear", 0.09f);
+      objShader.SetUniform(lightName + ".quadratic", 0.032f);
+    }
+    // spotLight
+    objShader.SetUniform("spotLight.intensity", glm::vec3(1.0f, 1.0f, 1.0f));
+    objShader.SetUniform("spotLight.position", camera.Position);
+    objShader.SetUniform("spotLight.direction", camera.Front);
+    objShader.SetUniform("spotLight.ambient", glm::vec3(0.0f, 0.0f, 0.0f));
+    objShader.SetUniform("spotLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
+    objShader.SetUniform("spotLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+    objShader.SetUniform("spotLight.constant", 1.0f);
+    objShader.SetUniform("spotLight.linear", 0.09f);
+    objShader.SetUniform("spotLight.quadratic", 0.032f);
+    objShader.SetUniform("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+    objShader.SetUniform("spotLight.outerCutOff",
+                         glm::cos(glm::radians(15.0f)));
 
     Shader lightShader(ProjRoot / "src/vertShader.vert",
                        ProjRoot / "src/lightFrag.frag");
@@ -164,9 +184,13 @@ int main() {
 
 #pragma region Rendering
       objShader.Use();
+      // glActiveTexture(GL_TEXTURE0);
+      // glBindTexture(GL_TEXTURE_2D, textures[0]);
+      // glActiveTexture(GL_TEXTURE1);
+      // glBindTexture(GL_TEXTURE_2D, textures[1]);
 
-      objShader.SetUniform("light.position", camera.Position);
-      objShader.SetUniform("light.direction", camera.Front);
+      objShader.SetUniform("spotLight.position", camera.Position);
+      objShader.SetUniform("spotLight.direction", camera.Front);
 
       objShader.SetUniform("viewPos", camera.Position);
 
