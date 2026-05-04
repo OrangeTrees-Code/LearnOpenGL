@@ -10,8 +10,8 @@
 #include <iostream>
 #include <stdexcept>
 
-Shader::Shader(std::filesystem::path vertexShaderSrc,
-               std::filesystem::path fragmentShaderSrc) {
+Shader::Shader(const std::filesystem::path &vertexShaderSrc,
+               const std::filesystem::path &fragmentShaderSrc) {
   std::ifstream vertSrc;
   std::ifstream fragSrc;
 

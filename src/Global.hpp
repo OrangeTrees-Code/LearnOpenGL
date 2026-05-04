@@ -13,8 +13,6 @@ public:
   Global(const Global &other) = delete;
   Global &operator=(const Global &other) = delete;
 
-  
-
 private:
   Global() = default;
   ~Global() = default;

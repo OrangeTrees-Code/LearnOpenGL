@@ -21,8 +21,8 @@ private:
   mutable std::unordered_map<std::string, int> uniformCache_;
 
 public:
-  Shader(std::filesystem::path vertexShaderSrc,
-         std::filesystem::path fragmentShaderSrc);
+  Shader(const std::filesystem::path &vertexShaderSrc,
+         const std::filesystem::path &fragmentShaderSrc);
   void Use() const;
 
   unsigned int Get_ID() const;
@@ -38,7 +38,8 @@ private:
   unsigned int InitShaderProgram(unsigned int vertexShader,
                                  unsigned int fragmentShader);
 
-  template <typename T> void SetUniformImpl(int location, const T &value) const;
+  template <typename T>
+  void SetUniformImpl(int location, const T &value) const;
 
   int GetUniformLocation(const std::string &name) const;
 };
