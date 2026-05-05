@@ -19,6 +19,7 @@ struct Texture {
   unsigned int ID;
   E_TexType Type;
   std::filesystem::path Path;
+  static unsigned int LoadTexture(std::filesystem::path path2Tex, bool isSetSlot = false, int slotIndex = 0);
 };
 
 class Mesh {

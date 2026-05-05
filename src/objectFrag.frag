@@ -120,14 +120,30 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
 }
 
 void main(){
-    vec3 norm = normalize(Normal);
-    vec3 viewDir = normalize(viewPos - FragPos);
+    // vec3 norm = normalize(Normal);
+    // vec3 viewDir = normalize(viewPos - FragPos);
     
-    vec3 result = CalcDirLight(dirLight, norm, viewDir);
-    for(int i = 0; i < NR_POINT_LIGHTS; i++)
-        result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);    
-    result += CalcSpotLight(spotLight, norm, FragPos, viewDir);    
+    // vec3 result = CalcDirLight(dirLight, norm, viewDir);
+    // for(int i = 0; i < NR_POINT_LIGHTS; i++)
+    //     result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);    
+    // result += CalcSpotLight(spotLight, norm, FragPos, viewDir);    
     
-    FragColor = vec4(result, 1.0);
-    // FragColor = texture(texture_diffuse_0,TexCoords);
+    // FragColor = vec4(result, 1.0);
+    FragColor = texture(texture_diffuse_0,TexCoords);
+    // FragColor = vec4(vec3(gl_FragCoord.z), 1.0);
 }
+
+// float near = 0.1; 
+// float far  = 100.0; 
+
+// float LinearizeDepth(float depth) 
+// {
+//     float z = depth * 2.0 - 1.0; // 转换为 NDC
+//     return (2.0 * near * far) / (far + near - z * (far - near));    
+// }
+
+// void main()
+// {             
+//     float depth = LinearizeDepth(gl_FragCoord.z) / far; // 为了演示除以 far
+//     FragColor = vec4(vec3(depth), 1.0);
+// }
