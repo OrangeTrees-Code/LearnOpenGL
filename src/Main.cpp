@@ -14,9 +14,13 @@
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/trigonometric.hpp>
+#include <initializer_list>
 #include <print>
 #include <stb_image.h>
 #include <string>
+
+void Enable(std::initializer_list<GLenum> opts);
+
 int main() {
   try {
     Camera camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f),
@@ -122,16 +126,18 @@ int main() {
                      ProjRoot / "src/objectFrag.frag");
 
     objShader.Use();
-    // objShader.SetUniform("texture_diffuse_0", 0);
+    objShader.SetUniform("texture_diffuse_0", 0);
+
+    Shader frameShader(ProjRoot / "src/vertShader.vert", ProjRoot / "src/frame.frag");
 #pragma endregion
 
 #pragma region SetUp_Rendering
 
-    glEnable(GL_DEPTH_TEST);
+    Enable({GL_DEPTH_TEST, GL_BLEND, GL_STENCIL_TEST});
     glDepthFunc(GL_LESS);
-    glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     // glDepthMask(GL_FALSE);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
     float time;
 #pragma endregion
@@ -141,7 +147,7 @@ int main() {
       window.processInput(camera);
 
       glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 #pragma endregion
 
@@ -153,7 +159,24 @@ int main() {
 
       objShader.SetUniform("view", view);
       objShader.SetUniform("projection", projection);
+
+      frameShader.Use();
+      frameShader.SetUniform("view", view);
+      frameShader.SetUniform("projection", projection);
+
+      objShader.Use();
+
       glm::mat4 model(1.0f);
+
+      glStencilMask(0x00);
+      glBindVertexArray(planeVAO);
+      glBindTexture(GL_TEXTURE_2D, floorTexture);
+      objShader.SetUniform("model", glm::mat4(1.0f));
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+      glBindVertexArray(0);
+
+      glStencilFunc(GL_ALWAYS, 1, 0xff);
+      glStencilMask(0xff);
 
       glBindVertexArray(cubeVAO);
       glActiveTexture(GL_TEXTURE0);
@@ -166,11 +189,27 @@ int main() {
       objShader.SetUniform("model", model);
       glDrawArrays(GL_TRIANGLES, 0, 36);
 
-      glBindVertexArray(planeVAO);
-      glBindTexture(GL_TEXTURE_2D, floorTexture);
-      objShader.SetUniform("model", glm::mat4(1.0f));
-      glDrawArrays(GL_TRIANGLES, 0, 6);
-      glBindVertexArray(0);
+      frameShader.Use();
+
+      glStencilFunc(GL_NOTEQUAL, 1, 0xff);
+      glStencilMask(0x00);
+
+      model = glm::mat4(1.0f);
+      glBindVertexArray(cubeVAO);
+      glDisable(GL_DEPTH_TEST);
+      model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
+      model = glm::scale(model, glm::vec3(1.2f,1.2f,1.2f));
+      frameShader.SetUniform("model", model);
+      glDrawArrays(GL_TRIANGLES, 0, 36);
+      model = glm::mat4(1.0f);
+      model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+      model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
+      frameShader.SetUniform("model", model);
+      glDrawArrays(GL_TRIANGLES, 0, 36);
+
+      glStencilMask(0xFF);
+      glEnable(GL_DEPTH_TEST);
+
 #pragma endregion
 
 #pragma region After_Rendering
@@ -198,4 +237,10 @@ int main() {
 
   glfwTerminate();
   return EXIT_SUCCESS;
+}
+
+void Enable(std::initializer_list<GLenum> opts) {
+  for (auto &opt : opts) {
+    glEnable(opt);
+  }
 }
