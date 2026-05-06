@@ -62,7 +62,7 @@ void Mesh::Draw(Shader &shader) {
   glBindVertexArray(0);
 }
 
-unsigned int Texture::LoadTexture(std::filesystem::path path2Tex, bool isSetSlot, int slotIndex) {
+unsigned int Texture::LoadTexture(std::filesystem::path path2Tex, bool isSetSlot, int slotIndex, GLint wrapS, GLint wrapT) {
   unsigned int texture;
   glGenTextures(1, &texture);
   if (isSetSlot == true) {
@@ -70,8 +70,8 @@ unsigned int Texture::LoadTexture(std::filesystem::path path2Tex, bool isSetSlot
   }
   glBindTexture(GL_TEXTURE_2D, texture);
 
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapT);
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                   GL_LINEAR_MIPMAP_LINEAR);

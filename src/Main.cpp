@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
+#include <functional>
 #include <glad/glad.h>
 // Windowing
 #include "Camera.hpp"
@@ -12,8 +13,10 @@
 #include <GLFW/glfw3.h>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/quaternion_geometric.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/trigonometric.hpp>
+#include <map>
 #include <print>
 #include <stb_image.h>
 #include <string>
@@ -22,7 +25,7 @@ int main() {
     Camera camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                   glm::vec3(0.0f, 1.0f, 0.0f), 800, 600);
 
-    Window window(800, 600, true, camera, 0.5f, 2.0f);
+    Window window(800, 600, false, camera, 0.5f, 2.0f);
 
 #pragma region Data
 
@@ -79,9 +82,26 @@ int main() {
         -5.0f, -0.5f, -5.0f, 0.0f, 2.0f,
         5.0f, -0.5f, -5.0f, 2.0f, 2.0f};
 
+    std::vector<glm::vec3> vegetation;
+    vegetation.push_back(glm::vec3(-1.5f, 0.0f, -0.48f));
+    vegetation.push_back(glm::vec3(1.5f, 0.0f, 0.51f));
+    vegetation.push_back(glm::vec3(0.0f, 0.0f, 0.7f));
+    vegetation.push_back(glm::vec3(-0.3f, 0.0f, -2.3f));
+    vegetation.push_back(glm::vec3(0.5f, 0.0f, -0.6f));
+
+    float transparentVertices[] = {
+        // positions         // texture Coords (swapped y coordinates because texture is flipped upside down)
+        0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
+        0.0f, -0.5f, 0.0f, 0.0f, 1.0f,
+        1.0f, -0.5f, 0.0f, 1.0f, 1.0f,
+
+        0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
+        1.0f, -0.5f, 0.0f, 1.0f, 1.0f,
+        1.0f, 0.5f, 0.0f, 1.0f, 0.0f};
+
     std::filesystem::path ProjRoot(PROJECT_ROOT);
 
-    stbi_set_flip_vertically_on_load(true);
+    // stbi_set_flip_vertically_on_load(true);
 
 #pragma endregion
 
@@ -110,11 +130,25 @@ int main() {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
     glBindVertexArray(0);
+
+    unsigned int grassVAO, grassVBO;
+    glGenVertexArrays(1, &grassVAO);
+    glGenBuffers(1, &grassVBO);
+    glBindVertexArray(grassVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, grassVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), transparentVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
+    glBindVertexArray(0);
 #pragma endregion
 
 #pragma region Init_Texture
     unsigned int cubeTexture = Texture::LoadTexture(ProjRoot / "textures/marble.jpg");
     unsigned int floorTexture = Texture::LoadTexture(ProjRoot / "textures/metal.png");
+    // unsigned int grassTexture = Texture::LoadTexture(ProjRoot / "textures/grass.png", false, 0, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+    unsigned int windowTexture = Texture::LoadTexture(ProjRoot / "textures/blending_transparent_window.png");
 #pragma endregion
 
 #pragma region Init_Shader
@@ -142,6 +176,13 @@ int main() {
 
       glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+      std::map<float, std::reference_wrapper<glm::vec3>, std::greater<float>> sorted;
+
+      for (auto &pos : vegetation) {
+        float distance = glm::length(camera.Position - pos);
+        sorted.emplace(distance, std::ref(pos));
+      }
 
 #pragma endregion
 
@@ -171,6 +212,16 @@ int main() {
       objShader.SetUniform("model", glm::mat4(1.0f));
       glDrawArrays(GL_TRIANGLES, 0, 6);
       glBindVertexArray(0);
+
+      glBindVertexArray(grassVAO);
+      glBindTexture(GL_TEXTURE_2D, windowTexture);
+      for (auto &posRef : sorted) {
+        objShader.SetUniform("model", glm::translate(glm::mat4(1.0f), posRef.second.get()));
+
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+      }
+      glBindVertexArray(0);
+
 #pragma endregion
 
 #pragma region After_Rendering
