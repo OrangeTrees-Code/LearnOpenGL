@@ -1,4 +1,5 @@
 // OpenGL loader
+#include <cstddef>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -16,6 +17,7 @@
 #include <glm/trigonometric.hpp>
 #include <print>
 #include <stb_image.h>
+#include <stdexcept>
 #include <string>
 int main() {
   try {
@@ -79,6 +81,13 @@ int main() {
         -5.0f, -0.5f, -5.0f, 0.0f, 2.0f,
         5.0f, -0.5f, -5.0f, 2.0f, 2.0f};
 
+    float screenVertices[] = { -1.0f,-1.0f,0.0f,0.0f,0.0f,
+                               1.0f,-1.0f,0.0f,1.0f,0.0f,
+                               1.0f,1.0f,0.0f,1.0f,1.0f,
+                               -1.0f,-1.0f,0.0f,0.0f,0.0f,
+                               1.0f, 1.0f,0.0f,1.0f,1.0f,
+                              -1.0f, 1.0f, 0.0f, 0.0f, 1.0f};
+
     std::filesystem::path ProjRoot(PROJECT_ROOT);
 
     stbi_set_flip_vertically_on_load(true);
@@ -110,14 +119,58 @@ int main() {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
     glBindVertexArray(0);
+
+    unsigned int screenTexVAO, screenTexVBO;
+    glGenVertexArrays(1, &screenTexVAO);
+    glGenBuffers(1, &screenTexVBO);
+    glBindVertexArray(screenTexVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, screenTexVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(screenVertices), screenVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
+    glBindVertexArray(0);
+
+
 #pragma endregion
 
 #pragma region Init_Texture
-    unsigned int cubeTexture = Texture::LoadTexture(ProjRoot / "textures/marble.jpg");
+    unsigned int cubeTexture = Texture::LoadTexture(ProjRoot / "textures/container.jpg");
     unsigned int floorTexture = Texture::LoadTexture(ProjRoot / "textures/metal.png");
+    unsigned int texColorBuffer;
+    glGenTextures(1, &texColorBuffer);
+    glBindTexture(GL_TEXTURE_2D, texColorBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, window.Width, window.Height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+#pragma endregion
+
+#pragma region RBO
+    unsigned int RBO;
+    glGenRenderbuffers(1, &RBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, RBO);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, window.Width, window.Height);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+#pragma endregion
+#pragma region FBO
+    unsigned int FBO;
+    glGenFramebuffers(1, &FBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texColorBuffer, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, RBO);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+      throw std::runtime_error("ERROR::FRAMEBUFFER:: Framebuffer is not complete!");
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 #pragma endregion
 
 #pragma region Init_Shader
+    Shader screenShader(ProjRoot / "src/framebuffer.vert", ProjRoot / "src/framebuffer.frag");
     Shader objShader(ProjRoot / "src/vertShader.vert",
                      ProjRoot / "src/objectFrag.frag");
 
@@ -132,7 +185,7 @@ int main() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     // glDepthMask(GL_FALSE);
-
+    // glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
     float time;
 #pragma endregion
 
@@ -140,12 +193,14 @@ int main() {
 #pragma region Before_Rendering
       window.processInput(camera);
 
-      glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 #pragma endregion
 
 #pragma region Rendering
+      glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+      glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      glEnable(GL_DEPTH_TEST);
+
       objShader.Use();
 
       auto view = camera.GetViewMatrix();
@@ -172,6 +227,15 @@ int main() {
       glDrawArrays(GL_TRIANGLES, 0, 6);
       glBindVertexArray(0);
 #pragma endregion
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT);
+
+      screenShader.Use();
+      glBindVertexArray(screenTexVAO);
+      glDisable(GL_DEPTH_TEST);
+      glBindTexture(GL_TEXTURE_2D, texColorBuffer);
+      glDrawArrays(GL_TRIANGLES,0,6);
 
 #pragma region After_Rendering
       window.UpdateDeltaTime();
@@ -188,6 +252,7 @@ int main() {
     glDeleteVertexArrays(1, &planeVAO);
     glDeleteBuffers(1, &cubeVBO);
     glDeleteBuffers(1, &planeVBO);
+
 #pragma endregion
 
   } catch (std::exception &exce) {
