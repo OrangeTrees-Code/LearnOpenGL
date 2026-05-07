@@ -19,6 +19,8 @@ struct Texture {
   unsigned int ID;
   E_TexType Type;
   std::filesystem::path Path;
+  static unsigned int LoadTexture(std::filesystem::path path2Tex, bool isSetSlot = false, int slotIndex = 0, GLint warpS = GL_REPEAT, GLint warpT = GL_REPEAT);
+  static unsigned int LoadCubeMap(std::vector<std::filesystem::path> &faces);
 };
 
 class Mesh {

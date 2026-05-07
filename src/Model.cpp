@@ -25,7 +25,7 @@ void Model::Draw(Shader &shader) {
 
 void Model::LoadModel(const std::filesystem::path &modelPath) {
   Assimp::Importer importer;
-  const aiScene *scene = importer.ReadFile(modelPath.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs);
+  const aiScene *scene = importer.ReadFile(modelPath.c_str(), aiProcess_Triangulate);
   if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
     throw std::runtime_error("ERROR::ASSIMP::" + std::string(importer.GetErrorString()));
   }
