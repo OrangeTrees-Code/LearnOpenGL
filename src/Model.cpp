@@ -106,6 +106,7 @@ std::vector<Texture> Model::LoadMaterialTextures(aiMaterial *mat, aiTextureType 
       texture.Type = E_TexType::Specular;
       break;
     default:
+      texture.Type = E_TexType::Diffuse;
       break;
     }
     texture.Path = str.C_Str();

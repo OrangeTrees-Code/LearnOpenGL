@@ -26,6 +26,14 @@ add_executable(app
     src/Color.cpp
     src/Mesh.cpp
     src/Model.cpp
+    src/GUI.cpp
+    include/imgui/imgui.cpp
+    include/imgui/imgui_draw.cpp
+    include/imgui/imgui_tables.cpp
+    include/imgui/imgui_widgets.cpp
+    include/imgui/imgui_demo.cpp
+    include/imgui/backends/imgui_impl_glfw.cpp
+    include/imgui/backends/imgui_impl_opengl3.cpp
 )
 
 # ===== 头文件目录 =====
@@ -33,6 +41,8 @@ target_include_directories(app PRIVATE
     ${GLFW_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/imgui
+    ${CMAKE_SOURCE_DIR}/include/imgui/backends
     src
 )
 

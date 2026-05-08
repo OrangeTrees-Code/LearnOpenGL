@@ -33,6 +33,7 @@ public:
 
   void processInput(Camera &camera);
   void UpdateDeltaTime();
+  void ResetCursorTracking();
 
 private:
   struct GLFWwindowDeleter {

@@ -6,6 +6,7 @@
 // Windowing
 #include "Camera.hpp"
 #include "Color.hpp"
+#include "GUI.hpp"
 #include "Global.hpp"
 #include "Mesh.hpp"
 #include "Model.hpp"
@@ -30,6 +31,8 @@ int main() {
                   glm::vec3(0.0f, 1.0f, 0.0f), 800, 600);
 
     Window window(800, 600, false, camera, 0.5f, 2.0f);
+
+    GUI::Instance().Init(window);
 
 #pragma region Data
 
@@ -125,7 +128,7 @@ int main() {
 
     // stbi_set_flip_vertically_on_load(true);
 
-    Model model_(ProjRoot / "res/backpack/backpack.obj");
+    Model model_(ProjRoot / "res/nanosuit_reflection/nanosuit.obj");
 
 #pragma endregion
 
@@ -179,6 +182,7 @@ int main() {
 
     objShader.Use();
     objShader.SetUniform("material.shininess", 32.0f);
+    objShader.SetUniform("skybox", 8);
 
     objShader.SetUniform("dirLight.intensity", glm::vec3(1.0f, 1.0f, 1.0f));
     objShader.SetUniform("dirLight.direction", glm::vec3(-0.2f, -1.0f, -0.3f));
@@ -245,13 +249,27 @@ int main() {
     boxModel = glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, -2.0f));
     refractCubeShader.Use();
     refractCubeShader.SetUniform("model", boxModel);
+    refractCubeShader.SetUniform("inverseModel", glm::inverse(boxModel));
 
     float time;
 #pragma endregion
 
     while (!glfwWindowShouldClose(window.Get_Window_Ptr())) {
 #pragma region Before_Rendering
+      GUI::Instance().UpdateInput(window);
       window.processInput(camera);
+      GUI::Instance().BeginFrame();
+      if (GUI::Instance().BeginPanel("Lights")) {
+        GUI::Instance().Value("GUI control", GUI::Instance().IsControlMode());
+        for (int i = 0; i < static_cast<int>(lightPos.size()); i++) {
+          GUI::Instance().PushID(i);
+          GUI::Instance().Value("Current position", lightPos[i]);
+          GUI::Instance().Inspect("Position", lightPos[i]);
+          GUI::Instance().Separator();
+          GUI::Instance().PopID();
+        }
+      }
+      GUI::Instance().EndPanel();
 
       glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -272,11 +290,17 @@ int main() {
 
       objShader.SetUniform("spotLight.position", camera.Position);
       objShader.SetUniform("spotLight.direction", camera.Front);
+      for (int i = 0; i < lightPos.size(); i++) {
+        const std::string lightName = "pointLights[" + std::to_string(i) + "]";
+        objShader.SetUniform(lightName + ".position", lightPos[i]);
+      }
 
       objShader.SetUniform("viewPos", camera.Position);
 
       objShader.SetUniform("view", view);
       objShader.SetUniform("projection", projection);
+      glActiveTexture(GL_TEXTURE8);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
 
       for (int i = 0; i < objectPos.size(); i++) {
         glm::mat4 model(1.0f);
@@ -332,6 +356,7 @@ int main() {
 #pragma endregion
 
 #pragma region After_Rendering
+      GUI::Instance().Render();
       window.UpdateDeltaTime();
 
       glfwSwapBuffers(window.Get_Window_Ptr());
@@ -344,6 +369,7 @@ int main() {
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
+    GUI::Instance().Shutdown();
 #pragma endregion
 
   } catch (std::exception &exce) {

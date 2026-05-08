@@ -1,12 +1,14 @@
 #include "Window.hpp"
 #include "Camera.hpp"
 #include "Cursor.hpp"
+#include "GUI.hpp"
 // OpenGL loader
 #include <glad/glad.h>
 // Windowing
 #include <GLFW/glfw3.h>
 #include <glm/ext/quaternion_geometric.hpp>
 #include <glm/trigonometric.hpp>
+#include <imgui.h>
 #include <stdexcept>
 
 void Window::framebuffer_size_callback(GLFWwindow *window, int width,
@@ -17,6 +19,12 @@ void Window::framebuffer_size_callback(GLFWwindow *window, int width,
 void Window::processInput(Camera &camera) {
   if (glfwGetKey(this->Get_Window_Ptr(), GLFW_KEY_ESCAPE) == GLFW_PRESS) {
     glfwSetWindowShouldClose(this->Get_Window_Ptr(), true);
+  }
+  if (GUI::Instance().IsControlMode()) {
+    return;
+  }
+  if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard) {
+    return;
   }
   if (glfwGetKey(this->Get_Window_Ptr(), GLFW_KEY_W) == GLFW_PRESS) {
     MainCamera.ProcessKeyInput(Direction::Forward, deltaTime);
@@ -89,7 +97,22 @@ void Window::UpdateDeltaTime() {
   lastFrame = currentFrame;
 }
 
+void Window::ResetCursorTracking() {
+  double xpos, ypos;
+  glfwGetCursorPos(Get_Window_Ptr(), &xpos, &ypos);
+  MainCursor.Position.x = xpos;
+  MainCursor.Position.y = ypos;
+}
+
 void Window::mouse_callback(GLFWwindow *window, double xpos, double ypos) {
+  if (GUI::Instance().IsControlMode()) {
+    MainCursor.Position.x = xpos;
+    MainCursor.Position.y = ypos;
+    return;
+  }
+  if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureMouse) {
+    return;
+  }
   static bool firstMouse = false;
   if (firstMouse == false) {
     MainCursor.Position.x = xpos;

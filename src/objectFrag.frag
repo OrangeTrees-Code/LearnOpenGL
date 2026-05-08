@@ -52,6 +52,7 @@ struct Surface {
     vec3 viewDir;
     vec3 diffuseTex;
     vec3 specularTex;
+    vec3 reflectionTex;
 };
 
 struct LightColor {
@@ -78,6 +79,7 @@ uniform samplerCube skybox;
 
 uniform sampler2D texture_diffuse_0;
 uniform sampler2D texture_specular_0;
+uniform sampler2D texture_diffuse_1;
 
 Surface GetSurface(vec3 normal, vec3 viewDir)
 {
@@ -85,7 +87,8 @@ Surface GetSurface(vec3 normal, vec3 viewDir)
         normal,
         viewDir,
         vec3(texture(texture_diffuse_0, TexCoords)),
-        vec3(texture(texture_specular_0, TexCoords))
+        vec3(texture(texture_specular_0, TexCoords)),
+        vec3(texture(texture_diffuse_1,TexCoords))  
     );
 }
 
@@ -160,6 +163,13 @@ vec3 CalcSpotLight(SpotLight light, Surface surface, vec3 fragPos)
     return ApplyLight(terms, attenuation, attenuation * spotIntensity);
 }
 
+vec3 CalcSkyboxReflection(Surface surface)
+{
+    vec3 reflectDir = reflect(-surface.viewDir,surface.normal);
+    vec3 reflectedColor = texture(skybox,reflectDir).rgb;
+    return reflectedColor * surface.reflectionTex;
+}
+
 void main(){
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(viewPos - FragPos);
@@ -172,7 +182,7 @@ void main(){
         result += CalcSpotLight(spotLight, surface, FragPos);    
     }
 
-    // vec3 Refelct = reflect(-viewDir,norm);
+    result += CalcSkyboxReflection(surface);
 
     FragColor = vec4(result, 1.0);
     // FragColor = texture(texture_diffuse_0,TexCoords);
