@@ -6,7 +6,7 @@
 #include <glad/glad.h>
 // Windowing
 #include "Camera.hpp"
-#include "Color.hpp"
+#include "Global.hpp"
 #include "Mesh.hpp"
 #include "Shader.tpp"
 #include "Window.hpp"
@@ -19,6 +19,7 @@
 #include <stb_image.h>
 #include <stdexcept>
 #include <string>
+
 int main() {
   try {
     Camera camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f),
@@ -81,12 +82,15 @@ int main() {
         -5.0f, -0.5f, -5.0f, 0.0f, 2.0f,
         5.0f, -0.5f, -5.0f, 2.0f, 2.0f};
 
-    float screenVertices[] = { -1.0f,-1.0f,0.0f,0.0f,0.0f,
-                               1.0f,-1.0f,0.0f,1.0f,0.0f,
-                               1.0f,1.0f,0.0f,1.0f,1.0f,
-                               -1.0f,-1.0f,0.0f,0.0f,0.0f,
-                               1.0f, 1.0f,0.0f,1.0f,1.0f,
-                              -1.0f, 1.0f, 0.0f, 0.0f, 1.0f};
+    float screenVertices[] = {// vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates. NOTE that this plane is now much smaller and at the top of the screen
+                              // positions   // texCoords
+                              -0.3f, 1.0f, 0.0f, 0.0f, 1.0f,
+                              -0.3f, 0.7f, 0.0f, 0.0f, 0.0f,
+                              0.3f, 0.7f, 0.0f, 1.0f, 0.0f,
+
+                              -0.3f, 1.0f, 0.0f, 0.0f, 1.0f,
+                              0.3f, 0.7f, 0.0f, 1.0f, 0.0f,
+                              0.3f, 1.0f, 0.0f, 1.0f, 1.0f};
 
     std::filesystem::path ProjRoot(PROJECT_ROOT);
 
@@ -132,7 +136,6 @@ int main() {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
     glBindVertexArray(0);
 
-
 #pragma endregion
 
 #pragma region Init_Texture
@@ -174,6 +177,9 @@ int main() {
     Shader objShader(ProjRoot / "src/vertShader.vert",
                      ProjRoot / "src/objectFrag.frag");
 
+    screenShader.Use();
+    screenShader.SetUniform("screenTexture", 0);
+
     objShader.Use();
     // objShader.SetUniform("texture_diffuse_0", 0);
 #pragma endregion
@@ -196,7 +202,8 @@ int main() {
 #pragma endregion
 
 #pragma region Rendering
-      glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
       glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       glEnable(GL_DEPTH_TEST);
@@ -227,15 +234,47 @@ int main() {
       glDrawArrays(GL_TRIANGLES, 0, 6);
       glBindVertexArray(0);
 #pragma endregion
-      glBindFramebuffer(GL_FRAMEBUFFER, 0);
-      glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-      glClear(GL_COLOR_BUFFER_BIT);
+      glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 
+      glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      glEnable(GL_DEPTH_TEST);
+
+      camera.Front = -camera.Front;
+      objShader.Use();
+
+      view = camera.GetViewMatrix();
+      projection = camera.GetProjectionMatrix();
+      objShader.SetUniform("view", view);
+      objShader.SetUniform("projection", projection);
+      model = glm::mat4(1.0f);
+
+      glBindVertexArray(cubeVAO);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, cubeTexture);
+      model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
+      objShader.SetUniform("model", model);
+      glDrawArrays(GL_TRIANGLES, 0, 36);
+      model = glm::mat4(1.0f);
+      model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+      objShader.SetUniform("model", model);
+      glDrawArrays(GL_TRIANGLES, 0, 36);
+
+      glBindVertexArray(planeVAO);
+      glBindTexture(GL_TEXTURE_2D, floorTexture);
+      objShader.SetUniform("model", glm::mat4(1.0f));
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+      glBindVertexArray(0);
+
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
       screenShader.Use();
       glBindVertexArray(screenTexVAO);
       glDisable(GL_DEPTH_TEST);
+      glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D, texColorBuffer);
-      glDrawArrays(GL_TRIANGLES,0,6);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+
+      camera.Front = -camera.Front;
 
 #pragma region After_Rendering
       window.UpdateDeltaTime();

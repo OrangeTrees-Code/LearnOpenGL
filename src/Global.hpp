@@ -1,8 +1,9 @@
+#pragma once
+
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/quaternion_geometric.hpp>
 #include <glm/ext/vector_float3.hpp>
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+
 class Global {
 
 public:
