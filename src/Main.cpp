@@ -1,0 +1,403 @@
+// OpenGL loader
+#include <cstdlib>
+#include <exception>
+#include <filesystem>
+#include <glad/glad.h>
+// Windowing
+#include "Camera.hpp"
+#include "Color.hpp"
+#include "GUI.hpp"
+#include "Global.hpp"
+#include "Mesh.hpp"
+#include "Model.hpp"
+#include "Shader.tpp"
+#include "Window.hpp"
+#include <GLFW/glfw3.h>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/trigonometric.hpp>
+#include <print>
+#include <string>
+#include <vector>
+
+#include <stb_image.h>
+
+unsigned int LoadTexture(std::filesystem::path path2Tex, int slotIndex);
+
+int main() {
+
+  const int WIDTH = 2560;
+  const int HEIGHT = 1600;
+  try {
+    Camera camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f),
+                  glm::vec3(0.0f, 1.0f, 0.0f), WIDTH, HEIGHT);
+
+    Window window(WIDTH, HEIGHT, false, camera, 0.5f, 2.0f);
+
+    GUI::Instance().Init(window);
+
+#pragma region Data
+
+    float vertices[] = {
+        // positions          // normals           // texture coords
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.5f, -0.5f,
+        -0.5f, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.5f, 0.5f, -0.5f, 0.0f,
+        0.0f, -1.0f, 1.0f, 1.0f, 0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
+        1.0f, 1.0f, -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
+
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.5f, -0.5f,
+        0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.5f, 0.5f, 0.5f, 0.0f,
+        0.0f, 1.0f, 1.0f, 1.0f, 0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+        1.0f, 1.0f, -0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+
+        -0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f, -0.5f, 0.5f,
+        -0.5f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f, -0.5f, -0.5f, -0.5f, -1.0f,
+        0.0f, 0.0f, 0.0f, 1.0f, -0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, -0.5f, -0.5f, 0.5f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        -0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+
+        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 0.5f,
+        -0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.5f, -0.5f, -0.5f, 1.0f,
+        0.0f, 0.0f, 0.0f, 1.0f, 0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.5f, -0.5f,
+        -0.5f, 0.0f, -1.0f, 0.0f, 1.0f, 1.0f, 0.5f, -0.5f, 0.5f, 0.0f,
+        -1.0f, 0.0f, 1.0f, 0.0f, 0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
+        1.0f, 0.0f, -0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f,
+
+        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.5f,
+        -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.5f, 0.5f, 0.5f, 0.0f,
+        1.0f, 0.0f, 1.0f, 0.0f, 0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
+        1.0f, 0.0f, -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f};
+
+    float skyboxVertices[] = {
+        // positions
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+
+        -1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
+
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
+
+        -1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f};
+    std::vector<glm::vec3> objectPos{glm::vec3(0.0f, 0.0f, 0.0f)};
+
+    std::vector<glm::vec3> lightPos{
+        glm::vec3(0.7f, 0.2f, 2.0f)};
+
+    glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
+
+    std::filesystem::path ProjRoot(PROJECT_ROOT);
+
+    // stbi_set_flip_vertically_on_load(true);
+
+    Model model_(ProjRoot / "res/nanosuit_reflection/nanosuit.obj");
+
+#pragma endregion
+
+#pragma region Init_VAO_VBO
+    unsigned int VAO, VBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                          (void *)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                          (void *)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                          (void *)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    glBindVertexArray(0);
+
+    unsigned int skyboxVAO, skyboxVBO;
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+
+    glBindVertexArray(skyboxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glBindVertexArray(0);
+#pragma endregion
+
+#pragma region UBO
+    unsigned int UBO;
+    glGenBuffers(1, &UBO);
+    glBindBuffer(GL_UNIFORM_BUFFER, UBO);
+    glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, UBO, 00, 2 * sizeof(glm::mat4));
+    
+
+#pragma endregion
+
+#pragma region Init_Texture
+    std::vector<std::filesystem::path> faces = {ProjRoot / "textures/skybox/right.jpg",
+                                                ProjRoot / "textures/skybox/left.jpg",
+                                                ProjRoot / "textures/skybox/top.jpg",
+                                                ProjRoot / "textures/skybox/bottom.jpg",
+                                                ProjRoot / "textures/skybox/front.jpg",
+                                                ProjRoot / "textures/skybox/back.jpg"};
+
+    unsigned int cubeMap = Texture::LoadCubeMap(faces);
+
+    unsigned int boxTex = Texture::LoadTexture(ProjRoot / "textures/marble.jpg", true, 1);
+#pragma endregion
+
+#pragma region Init_Shader
+    Shader objShader(ProjRoot / "src/shader/vertShader.vert",
+                     ProjRoot / "src/shader/objectFrag.frag");
+
+    objShader.Use();
+    objShader.SetUniform("material.shininess", 32.0f);
+    objShader.SetUniform("skybox", 8);
+
+    objShader.SetUniform("dirLight.intensity", glm::vec3(1.0f, 1.0f, 1.0f));
+    objShader.SetUniform("dirLight.direction", glm::vec3(-0.2f, -1.0f, -0.3f));
+    objShader.SetUniform("dirLight.ambient", glm::vec3(0.05f, 0.05f, 0.05f));
+    objShader.SetUniform("dirLight.diffuse", glm::vec3(0.4f, 0.4f, 0.4f));
+    objShader.SetUniform("dirLight.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+    for (int i = 0; i < lightPos.size(); i++) {
+      const std::string lightName = "pointLights[" + std::to_string(i) + "]";
+      objShader.SetUniform(lightName + ".intensity",
+                           glm::vec3(1.0f, 1.0f, 1.0f));
+      objShader.SetUniform(lightName + ".position", lightPos[i]);
+      objShader.SetUniform(lightName + ".ambient",
+                           glm::vec3(0.05f, 0.05f, 0.05f));
+      objShader.SetUniform(lightName + ".diffuse", glm::vec3(0.8f, 0.8f, 0.8f));
+      objShader.SetUniform(lightName + ".specular",
+                           glm::vec3(1.0f, 1.0f, 1.0f));
+      objShader.SetUniform(lightName + ".constant", 1.0f);
+      objShader.SetUniform(lightName + ".linear", 0.09f);
+      objShader.SetUniform(lightName + ".quadratic", 0.032f);
+    }
+    // spotLight
+    objShader.SetUniform("switchSpotLight", false);
+    // objShader.SetUniform("spotLight.intensity", glm::vec3(1.0f, 1.0f, 1.0f));
+    // objShader.SetUniform("spotLight.position", camera.Position);
+    // objShader.SetUniform("spotLight.direction", camera.Front);
+    // objShader.SetUniform("spotLight.ambient", glm::vec3(0.0f, 0.0f, 0.0f));
+    // objShader.SetUniform("spotLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
+    // objShader.SetUniform("spotLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+    // objShader.SetUniform("spotLight.constant", 1.0f);
+    // objShader.SetUniform("spotLight.linear", 0.09f);
+    // objShader.SetUniform("spotLight.quadratic", 0.032f);
+    // objShader.SetUniform("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+    // objShader.SetUniform("spotLight.outerCutOff",
+    //                      glm::cos(glm::radians(15.0f)));
+
+    Shader lightShader(ProjRoot / "src/shader/vertShader.vert",
+                       ProjRoot / "src/shader/lightFrag.frag");
+
+    lightShader.Use();
+    lightShader.SetUniform("lightColor", lightColor);
+
+    Shader skyboxShader(ProjRoot / "src/shader/skybox.vert", ProjRoot / "src/shader/skybox.frag");
+    skyboxShader.Use();
+    skyboxShader.SetUniform("cubeMap", 0);
+
+    Shader reflectCubeShader(ProjRoot / "src/shader/box.vert", ProjRoot / "src/shader/reflectBox.frag");
+    reflectCubeShader.Use();
+    reflectCubeShader.SetUniform("skybox", 0);
+
+    Shader refractCubeShader(ProjRoot / "src/shader/box.vert", ProjRoot / "src/shader/refractBox.frag");
+    refractCubeShader.Use();
+    refractCubeShader.SetUniform("skybox", 0);
+#pragma endregion
+
+#pragma region SetUp_Rendering
+    glBindVertexArray(VAO);
+
+    glEnable(GL_DEPTH_TEST);
+    // glEnable(GL_BLEND);
+    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glm::mat4 boxModel = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 2.0f, 2.0f));
+    reflectCubeShader.Use();
+    reflectCubeShader.SetUniform("model", boxModel);
+    boxModel = glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, -2.0f));
+    refractCubeShader.Use();
+    refractCubeShader.SetUniform("model", boxModel);
+    refractCubeShader.SetUniform("inverseModel", glm::inverse(boxModel));
+    glEnable(GL_PROGRAM_POINT_SIZE);
+    float time;
+#pragma endregion
+
+    while (!glfwWindowShouldClose(window.Get_Window_Ptr())) {
+#pragma region Before_Rendering
+      GUI::Instance().UpdateInput(window);
+      window.processInput(camera);
+      GUI::Instance().BeginFrame();
+      if (GUI::Instance().BeginPanel("Lights")) {
+        GUI::Instance().Value("GUI control", GUI::Instance().IsControlMode());
+        for (int i = 0; i < static_cast<int>(lightPos.size()); i++) {
+          GUI::Instance().PushID(i);
+          GUI::Instance().Value("Current position", lightPos[i]);
+          GUI::Instance().Inspect("Position", lightPos[i]);
+          GUI::Instance().Separator();
+          GUI::Instance().PopID();
+        }
+      }
+      GUI::Instance().EndPanel();
+
+      glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      glActiveTexture(GL_TEXTURE0);
+
+#pragma endregion
+
+#pragma region Rendering
+
+      auto view = camera.GetViewMatrix();
+      auto projection = camera.GetProjectionMatrix();
+
+      glBindBuffer(GL_UNIFORM_BUFFER, UBO);
+      glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view));
+      glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projection));
+      glBindBuffer(GL_UNIFORM_BUFFER,0);
+
+      objShader.Use();
+      // glActiveTexture(GL_TEXTURE0);
+      // glBindTexture(GL_TEXTURE_2D, textures[0]);
+      // glActiveTexture(GL_TEXTURE1);
+      // glBindTexture(GL_TEXTURE_2D, textures[1]);
+
+      objShader.SetUniform("spotLight.position", camera.Position);
+      objShader.SetUniform("spotLight.direction", camera.Front);
+      for (int i = 0; i < lightPos.size(); i++) {
+        const std::string lightName = "pointLights[" + std::to_string(i) + "]";
+        objShader.SetUniform(lightName + ".position", lightPos[i]);
+      }
+
+      objShader.SetUniform("viewPos", camera.Position);
+
+      // objShader.SetUniform("view", view);
+      // objShader.SetUniform("projection", projection);
+      glActiveTexture(GL_TEXTURE8);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
+
+      for (int i = 0; i < objectPos.size(); i++) {
+        glm::mat4 model(1.0f);
+        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
+        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));     // it's a bit too big for our scene, so scale it down
+
+        objShader.SetUniform("model", model);
+
+        model_.Draw(objShader);
+      }
+
+      lightShader.Use();
+
+      // lightShader.SetUniform("view", view);
+      // lightShader.SetUniform("projection", projection);
+
+      glBindVertexArray(VAO);
+      for (auto &pos : lightPos) {
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
+        model = glm::scale(model, glm::vec3(0.2f));
+
+        lightShader.SetUniform("model", model);
+
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+      }
+
+      reflectCubeShader.Use();
+      reflectCubeShader.SetUniform("viewPos", camera.Position);
+      // reflectCubeShader.SetUniform("view", view);
+      // reflectCubeShader.SetUniform("projection", projection);
+
+      glBindVertexArray(VAO);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
+      glDrawArrays(GL_TRIANGLES, 0, 36);
+
+      refractCubeShader.Use();
+      refractCubeShader.SetUniform("viewPos", camera.Position);
+      // refractCubeShader.SetUniform("view", view);
+      // refractCubeShader.SetUniform("projection", projection);
+
+      glBindVertexArray(VAO);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
+      glDrawArrays(GL_TRIANGLES, 0, 36);
+
+      glDepthFunc(GL_LEQUAL);
+      skyboxShader.Use();
+      // skyboxShader.SetUniform("view", glm::mat4(glm::mat3(view)));
+      // skyboxShader.SetUniform("projection", projection);
+      glBindVertexArray(skyboxVAO);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
+      glDrawArrays(GL_TRIANGLES, 0, 36);
+      glDepthFunc(GL_LESS);
+#pragma endregion
+
+#pragma region After_Rendering
+      GUI::Instance().Render();
+      window.UpdateDeltaTime();
+
+      glfwSwapBuffers(window.Get_Window_Ptr());
+      glfwPollEvents();
+#pragma endregion
+    }
+
+#pragma region FollowUp_Rendering
+    glBindVertexArray(0);
+
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    GUI::Instance().Shutdown();
+#pragma endregion
+
+  } catch (std::exception &exce) {
+    std::println("{}", exce.what());
+    glfwTerminate();
+    return EXIT_FAILURE;
+  }
+
+  glfwTerminate();
+  return EXIT_SUCCESS;
+}
