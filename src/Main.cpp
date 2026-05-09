@@ -174,7 +174,6 @@ int main() {
     glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
     glBindBufferRange(GL_UNIFORM_BUFFER, 0, UBO, 00, 2 * sizeof(glm::mat4));
-    
 
 #pragma endregion
 
@@ -193,7 +192,7 @@ int main() {
 
 #pragma region Init_Shader
     Shader objShader(ProjRoot / "src/shader/vertShader.vert",
-                     ProjRoot / "src/shader/objectFrag.frag");
+                     ProjRoot / "src/shader/objectFrag.frag", ProjRoot / "src/shader/explode.geom");
 
     objShader.Use();
     objShader.SetUniform("material.shininess", 32.0f);
@@ -266,7 +265,7 @@ int main() {
     refractCubeShader.SetUniform("model", boxModel);
     refractCubeShader.SetUniform("inverseModel", glm::inverse(boxModel));
     glEnable(GL_PROGRAM_POINT_SIZE);
-    float time;
+    float time = 0;
 #pragma endregion
 
     while (!glfwWindowShouldClose(window.Get_Window_Ptr())) {
@@ -300,9 +299,10 @@ int main() {
       glBindBuffer(GL_UNIFORM_BUFFER, UBO);
       glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view));
       glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projection));
-      glBindBuffer(GL_UNIFORM_BUFFER,0);
+      glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
       objShader.Use();
+      objShader.SetUniform("time", time);
       // glActiveTexture(GL_TEXTURE0);
       // glBindTexture(GL_TEXTURE_2D, textures[0]);
       // glActiveTexture(GL_TEXTURE1);
@@ -378,6 +378,7 @@ int main() {
 #pragma region After_Rendering
       GUI::Instance().Render();
       window.UpdateDeltaTime();
+      time += window.deltaTime;
 
       glfwSwapBuffers(window.Get_Window_Ptr());
       glfwPollEvents();

@@ -8,8 +8,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
-
 Shader::Shader(const std::filesystem::path &vertexShaderSrc,
                const std::filesystem::path &fragmentShaderSrc) {
   std::ifstream vertSrc;
@@ -31,6 +31,7 @@ Shader::Shader(const std::filesystem::path &vertexShaderSrc,
 
     buffer_fragSrc << fragSrc.rdbuf();
     fragSrc.close();
+
   } catch (std::ifstream::failure e) {
     throw std::runtime_error("ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ");
   }
@@ -45,6 +46,55 @@ Shader::Shader(const std::filesystem::path &vertexShaderSrc,
 
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
+}
+
+Shader::Shader(const std::filesystem::path &vertexShaderSrc,
+               const std::filesystem::path &fragmentShaderSrc,
+               const std::filesystem::path &geometryShaderSrc) {
+  std::ifstream vertSrc;
+  std::ifstream geomSrc;
+  std::ifstream fragSrc;
+
+  std::stringstream buffer_vertSrc;
+  std::stringstream buffer_geomSrc;
+  std::stringstream buffer_fragSrc;
+
+  vertSrc.exceptions(std::ifstream::badbit | std::ifstream::failbit);
+  geomSrc.exceptions(std::ifstream::badbit | std::ifstream::failbit);
+  fragSrc.exceptions(std::ifstream::badbit | std::ifstream::failbit);
+
+  try {
+    vertSrc.open(vertexShaderSrc);
+
+    buffer_vertSrc << vertSrc.rdbuf();
+    vertSrc.close();
+
+    geomSrc.open(geometryShaderSrc);
+
+    buffer_geomSrc << geomSrc.rdbuf();
+    geomSrc.close();
+
+    fragSrc.open(fragmentShaderSrc);
+
+    buffer_fragSrc << fragSrc.rdbuf();
+    fragSrc.close();
+
+  } catch (std::ifstream::failure e) {
+    throw std::runtime_error("ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ");
+  }
+
+  unsigned int vertexShader = this->InitVertexShader(buffer_vertSrc.str().c_str());
+
+  unsigned int fragmentShader = this->InitFragmentShader(buffer_fragSrc.str().c_str());
+
+  unsigned int geometryShader = this->InitGeometryShader(buffer_geomSrc.str().c_str());
+
+  this->ID_ = this->InitShaderProgram(vertexShader, fragmentShader,
+                                      geometryShader);
+
+  glDeleteShader(vertexShader);
+  glDeleteShader(fragmentShader);
+  glDeleteShader(geometryShader);
 }
 
 unsigned int Shader::InitVertexShader(const char *vertexShaderSource) {
@@ -79,13 +129,32 @@ unsigned int Shader::InitFragmentShader(const char *fragmentShaderSource) {
   return fragmentShader;
 }
 
+unsigned int Shader::InitGeometryShader(const char *geometryShaderSource) {
+  unsigned int geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
+  glShaderSource(geometryShader, 1, &geometryShaderSource, NULL);
+  glCompileShader(geometryShader);
+
+  glGetShaderiv(geometryShader, GL_COMPILE_STATUS, &success_);
+
+  if (!success_) {
+    glGetShaderInfoLog(geometryShader, sizeof(infoLog_), NULL, infoLog_);
+    throw std::runtime_error("ERROR::SHADER::GEOMETRY::COMPILATION_FAILED");
+  }
+
+  return geometryShader;
+}
+
 unsigned int Shader::InitShaderProgram(unsigned int vertexShader,
-                                       unsigned int fragmentShader) {
+                                       unsigned int fragmentShader,
+                                       unsigned int geometryShader) {
   unsigned int shaderProgram;
   shaderProgram = glCreateProgram();
 
   glAttachShader(shaderProgram, vertexShader);
   glAttachShader(shaderProgram, fragmentShader);
+  if (geometryShader != 0) {
+    glAttachShader(shaderProgram, geometryShader);
+  }
   glLinkProgram(shaderProgram);
 
   glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success_);

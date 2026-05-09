@@ -1,30 +1,28 @@
 #version 460 core
 layout(location = 0) in vec3 aPos;
-
-flat out int VertexID;
-
-layout(std140) uniform Matrices{
-    mat4 view;
-    mat4 projection;
-};
+out vec4[6] Axis;
 
 uniform mat4 model;
-// uniform mat4 view;
-// uniform mat4 projection;
+uniform mat4 view;
+uniform mat4 projection;
 
 void main()
 {
-    gl_Position = projection * view * model * vec4(aPos, 1.0);    
-    // gl_PointSize = gl_Position.z;   
+    vec4 worldPos = model * vec4(aPos,1.0);
+    vec4 axis[6] = vec4[](
+        worldPos + vec4(-0.1,0,0,0),
+        worldPos + vec4(0.1,0,0,0),
+        worldPos + vec4(0,0.1,0,0),
+        worldPos + vec4(0,-0.1,0,0),
+        worldPos + vec4(0,0,0.1,0),
+        worldPos + vec4(0,0,-0.1,0)
+    );
 
-    // vec4 viewPos = view * model * vec4(aPos, 1.0);
-    // gl_Position = projection * viewPos;
+    gl_Position = projection * view * worldPos;  
 
-    // float dist = -viewPos.z;
-    // gl_PointSize = clamp(dist * 4.0, 2.0, 80.0);
+    for(int i = 0;i<6;i++){
+        axis[i] = projection * view * axis[i];
+    };
 
-    
-    // gl_PointSize = clamp(80.0 / dist, 2.0, 80.0);
-
-    VertexID = gl_VertexID; 
+    Axis = axis;  
 }

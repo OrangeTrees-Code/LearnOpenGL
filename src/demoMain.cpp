@@ -27,8 +27,9 @@ int main() {
     Camera camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                   glm::vec3(0.0f, 1.0f, 0.0f), 2560, 1600);
 
-    Window window(800, 600, false, camera, 0.5f, 2.0f);
-
+    Window window(2560, 1600, false, camera, 0.5f, 2.0f);
+    glfwSetInputMode(window.Get_Window_Ptr(), GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+    glfwSetInputMode(window.Get_Window_Ptr(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     float Vertices[] = {
         // positions
         -1.0f, 1.0f, -1.0f,
@@ -86,7 +87,7 @@ int main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
     glBindVertexArray(0);
 
-    Shader shader(ProjRoot / "src/shader/demo.vert", ProjRoot / "src/shader/demo.frag");
+    Shader shader(ProjRoot / "src/shader/demo.vert", ProjRoot / "src/shader/demo.frag", ProjRoot / "src/shader/demo.geom");
 
     glEnable(GL_DEPTH_TEST);
     // glEnable(GL_BLEND);
@@ -107,7 +108,7 @@ int main() {
       for (auto &pos : objectPos) {
         shader.SetUniform("model", glm::translate(glm::mat4(1.0f), pos));
 
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glDrawArrays(GL_POINTS, 0, 36);
       }
       glBindVertexArray(0);
       glfwSwapBuffers(window.Get_Window_Ptr());

@@ -23,6 +23,11 @@ private:
 public:
   Shader(const std::filesystem::path &vertexShaderSrc,
          const std::filesystem::path &fragmentShaderSrc);
+
+  Shader(const std::filesystem::path &vertexShaderSrc,
+         const std::filesystem::path &fragmentShaderSrc,
+         const std::filesystem::path &geometryShaderSrc);
+
   void Use() const;
 
   unsigned int Get_ID() const;
@@ -35,8 +40,11 @@ private:
 
   unsigned int InitFragmentShader(const char *fragmentShaderSource);
 
+  unsigned int InitGeometryShader(const char *geometryShaderSource);
+
   unsigned int InitShaderProgram(unsigned int vertexShader,
-                                 unsigned int fragmentShader);
+                                 unsigned int fragmentShader,
+                                 unsigned int geometryShader = 0);
 
   template <typename T>
   void SetUniformImpl(int location, const T &value) const;

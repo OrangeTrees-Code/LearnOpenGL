@@ -1,37 +1,32 @@
 #version 460 core
+in vec3 AxisColor;
 
-
-flat in int VertexID;
 out vec4 FragColor;
 
+float hash(vec2 p)
+{
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+float randomRange(vec2 p, float a, float b)
+{
+    return mix(a, b, hash(p));
+}
+
+
 void main(){
-    // if(VertexID % 2 ==0){
+    // float possi = randomRange(gl_FragCoord.xy,0.0,100.0);
+    // if(possi < 33.3){
     //     FragColor = vec4(1,0,0,1);
     // }
-    // else if(VertexID % 3 == 0){
+    // else if(possi < 66.6){
     //     FragColor = vec4(0,1,0,1);
     // }
     // else{
     //     FragColor = vec4(0,0,1,1);
     // }
 
-    // if(gl_FragCoord.x < 1280)
-    //     FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-    // else
-    //     FragColor = vec4(0.0, 1.0, 0.0, 1.0);  
-
-    if(gl_FrontFacing)
-        FragColor = vec4(1,0,0,1);
-    else
-        FragColor = vec4(0,0,1,1);
+    FragColor = vec4(AxisColor , 1.0);
 }
-
-// #version 420 core // 注意GLSL的版本！
-// out vec4 FragColor;
-// layout (depth_greater) out float gl_FragDepth;
-
-// void main()
-// {             
-//     FragColor = vec4(1.0);
-//     gl_FragDepth = gl_FragCoord.z + 0.1;
-// }  
