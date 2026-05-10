@@ -1,30 +1,22 @@
 #version 460 core
-layout(location = 0) in vec3 aPos;
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aTexCoords;
+layout(location = 3) in mat4 instanceMatrix;
 
-flat out int VertexID;
+out vec2 TexCoords;
 
-layout(std140) uniform Matrices{
-    mat4 view;
-    mat4 projection;
-};
-
+uniform mat4 view;
+uniform mat4 projection;
+uniform bool isSingle;
 uniform mat4 model;
-// uniform mat4 view;
-// uniform mat4 projection;
 
-void main()
-{
-    gl_Position = projection * view * model * vec4(aPos, 1.0);    
-    // gl_PointSize = gl_Position.z;   
-
-    // vec4 viewPos = view * model * vec4(aPos, 1.0);
-    // gl_Position = projection * viewPos;
-
-    // float dist = -viewPos.z;
-    // gl_PointSize = clamp(dist * 4.0, 2.0, 80.0);
-
-    
-    // gl_PointSize = clamp(80.0 / dist, 2.0, 80.0);
-
-    VertexID = gl_VertexID; 
+void main(){
+    if(isSingle == false){
+        gl_Position = projection * view * instanceMatrix * vec4(aPos,1.0);
+    }
+    else{
+        gl_Position = projection * view * model * vec4(aPos,1.0);
+    }
+    TexCoords = aTexCoords;
 }

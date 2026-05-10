@@ -4,6 +4,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <filesystem>
+#include <glm/ext/matrix_float4x4.hpp>
 #include <unordered_map>
 #include <vector>
 class Model {
@@ -11,6 +12,10 @@ public:
   Model(const std::filesystem::path &modelPath) { LoadModel(modelPath); }
 
   void Draw(Shader &shader);
+  void DrawBatch(Shader& shader,int amount);
+
+  template <typename T>
+  void SetInstanceProp(int slot, unsigned int instanceVBO) const;
 
 private:
   static std::unordered_map<std::filesystem::path, Texture> textureCache_;

@@ -31,7 +31,7 @@ void Mesh::SetUpMesh() {
   glEnableVertexAttribArray(2);
   glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
                         (void *)offsetof(Vertex, TexCoords));
-
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 }
 
@@ -60,6 +60,34 @@ void Mesh::Draw(Shader &shader) {
 
   glBindVertexArray(vao_);
   glDrawElements(GL_TRIANGLES, indices_.size(), GL_UNSIGNED_INT, 0);
+  glBindVertexArray(0);
+}
+
+void Mesh::DrawBatch(Shader &shader, int amount) {
+  unsigned int diffIndex = 0;
+  unsigned int specIndex = 0;
+
+  for (int i = 0; i < textures_.size(); i++) {
+    glActiveTexture(GL_TEXTURE0 + i);
+
+    std::string name;
+    switch (textures_.at(i).Type) {
+
+    case E_TexType::Diffuse:
+      name = "texture_diffuse_" + std::to_string(diffIndex++);
+      break;
+    case E_TexType::Specular:
+      name = "texture_specular_" + std::to_string(specIndex++);
+      break;
+    }
+
+    shader.SetUniform(name, i);
+    glBindTexture(GL_TEXTURE_2D, textures_.at(i).ID);
+  }
+  glActiveTexture(GL_TEXTURE0);
+
+  glBindVertexArray(vao_);
+  glDrawElementsInstanced(GL_TRIANGLES, indices_.size(), GL_UNSIGNED_INT, 0,amount);
   glBindVertexArray(0);
 }
 
@@ -102,7 +130,7 @@ unsigned int Texture::LoadTexture(std::filesystem::path path2Tex, bool isSetSlot
   return texture;
 }
 
-unsigned int Texture::LoadCubeMap(std::vector<std::filesystem::path>& faces) {
+unsigned int Texture::LoadCubeMap(std::vector<std::filesystem::path> &faces) {
   unsigned int textureID;
   glGenTextures(1, &textureID);
   glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
@@ -125,3 +153,4 @@ unsigned int Texture::LoadCubeMap(std::vector<std::filesystem::path>& faces) {
 
   return textureID;
 }
+

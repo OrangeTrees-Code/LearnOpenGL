@@ -22,7 +22,7 @@ add_executable(app
     src/Camera.cpp
     src/Cursor.cpp
     src/Global.hpp
-    src/Main.cpp
+    src/demoMain.cpp
     src/Color.cpp
     src/Mesh.cpp
     src/Model.cpp

@@ -44,6 +44,9 @@ void Window::processInput(Camera &camera) {
   if (glfwGetKey(this->Get_Window_Ptr(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
     MainCamera.ProcessKeyInput(Direction::Down, deltaTime);
   }
+  if (glfwGetKey(this->Get_Window_Ptr(), GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {
+    MainCamera.ProcessKeyInput(Direction::Forward, deltaTime * 2);
+  }
 }
 
 GLFWwindow *Window::WindowInit(bool isTransparent) {

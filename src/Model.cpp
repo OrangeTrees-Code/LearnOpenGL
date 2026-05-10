@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <glm/ext/vector_float2.hpp>
+#include <glm/ext/vector_float4.hpp>
 #include <stb_image.h>
 #include <stdexcept>
 
@@ -150,4 +151,38 @@ unsigned int Model::LoadTexture(const std::filesystem::path &relPath, const std:
   }
 
   return textureId;
+}
+
+template <class>
+inline constexpr bool always_false_v = false;
+
+template <typename T>
+void Model::SetInstanceProp(int slot, unsigned int instanceVBO) const {
+  if constexpr (std::same_as<T, glm::mat4>) {
+    for (unsigned int i = 0; i < meshes_.size(); ++i) {
+      auto vao = meshes_[i].vao_;
+      size_t vec4Size = sizeof(glm::vec4);
+      glBindVertexArray(vao);
+      glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+
+      for (int j = 0; j < 4; j++) {
+        glEnableVertexAttribArray(slot + j);
+        glVertexAttribPointer(slot + j, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void *)(j * vec4Size));
+        glVertexAttribDivisor(slot + j, 1);
+      }
+
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+      glBindVertexArray(0);
+    }
+  } else {
+    static_assert(always_false_v<T>, "Unsupported uniform type!");
+  }
+}
+
+template void Model::SetInstanceProp<glm::mat4>(int slot, unsigned int instanceVBO) const;
+
+void Model::DrawBatch(Shader &shader, int amount) {
+  for (auto &mesh : meshes_) {
+    mesh.DrawBatch(shader, amount);
+  }
 }

@@ -24,6 +24,7 @@ struct Texture {
 };
 
 class Mesh {
+  friend class Model;
 public:
   Mesh(std::vector<Vertex> &&vertices, std::vector<unsigned int> &&indices,
        std::vector<Texture> &&textures)
@@ -34,6 +35,7 @@ public:
   }
 
   void Draw(Shader &shader);
+  void DrawBatch(Shader &shader,int amount);
 
 private:
   void SetUpMesh();
