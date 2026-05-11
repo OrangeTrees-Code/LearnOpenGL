@@ -36,7 +36,7 @@ void main(){
     }
 
     float distance = length(FragPos - lightPos);
-    float attenuation = 1.0 / (distance * distance);
+    float attenuation = 1.0 / pow(distance + 1,2);
 
     vec3 specular = specularStrength * spec * lightColor;
     vec3 baseColor = useTexture ? texture(diffuseTexture, TexCoords).rgb : objectColor;
