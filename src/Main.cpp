@@ -108,26 +108,24 @@ int main() {
 
     const int shadowWidth = 2048;
     const int shadowHeight = 2048;
-    const float nearPlane = 0.1f;
-    const float farPlane = 25.0f;
 
     unsigned int shadowMap;
     glGenTextures(1, &shadowMap);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, shadowMap);
-    for (unsigned int i = 0; i < 6; ++i) {
-      glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT,
-                   shadowWidth, shadowHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT,
-                   NULL);
-    }
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, shadowMap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, shadowWidth,
+                 shadowHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
     unsigned int depthMapFBO;
     glGenFramebuffers(1, &depthMapFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                           shadowMap, 0);
     glDrawBuffer(GL_NONE);
     glReadBuffer(GL_NONE);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -187,7 +185,6 @@ int main() {
     objShader.SetUniform("specularStrength", 0.5f);
     objShader.SetUniform("Shininess", 32);
     objShader.SetUniform("diffuseTexture", 0);
-    objShader.SetUniform("farPlane", farPlane);
 
     Shader lightShader(ProjRoot / "src/vertShader.vert",
                        ProjRoot / "src/lightFrag.frag");
@@ -207,7 +204,7 @@ int main() {
     objShader.Use();
     objShader.SetUniform("shadowMap", 1);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, shadowMap);
+    glBindTexture(GL_TEXTURE_2D, shadowMap);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, woodTexture);
@@ -237,64 +234,34 @@ int main() {
 
       glViewport(0, 0, shadowWidth, shadowHeight);
       glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+      glClear(GL_DEPTH_BUFFER_BIT);
+      // glEnable(GL_CULL_FACE);
+      // glCullFace(GL_FRONT);
 
       depthShader.Use();
-      depthShader.SetUniform("lightPos", lightPos[0]);
-      depthShader.SetUniform("farPlane", farPlane);
 
-      auto shadowProjection = glm::perspective(
-          glm::radians(90.0f),
-          static_cast<float>(shadowWidth) / static_cast<float>(shadowHeight),
-          nearPlane, farPlane);
-      glm::mat4 shadowTransforms[] = {
-          shadowProjection *
-              glm::lookAt(lightPos[0],
-                          lightPos[0] + glm::vec3(1.0f, 0.0f, 0.0f),
-                          glm::vec3(0.0f, -1.0f, 0.0f)),
-          shadowProjection *
-              glm::lookAt(lightPos[0],
-                          lightPos[0] + glm::vec3(-1.0f, 0.0f, 0.0f),
-                          glm::vec3(0.0f, -1.0f, 0.0f)),
-          shadowProjection *
-              glm::lookAt(lightPos[0],
-                          lightPos[0] + glm::vec3(0.0f, 1.0f, 0.0f),
-                          glm::vec3(0.0f, 0.0f, 1.0f)),
-          shadowProjection *
-              glm::lookAt(lightPos[0],
-                          lightPos[0] + glm::vec3(0.0f, -1.0f, 0.0f),
-                          glm::vec3(0.0f, 0.0f, -1.0f)),
-          shadowProjection *
-              glm::lookAt(lightPos[0],
-                          lightPos[0] + glm::vec3(0.0f, 0.0f, 1.0f),
-                          glm::vec3(0.0f, -1.0f, 0.0f)),
-          shadowProjection *
-              glm::lookAt(lightPos[0],
-                          lightPos[0] + glm::vec3(0.0f, 0.0f, -1.0f),
-                          glm::vec3(0.0f, -1.0f, 0.0f)),
-      };
+      auto lightView = glm::lookAt(lightPos[0], glm::vec3(0, 0, 0),
+                                   glm::vec3(0.0f, 1.0f, 0.0f));
+      auto lightProjection =
+          glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 25.0f);
 
-      for (unsigned int face = 0; face < 6; ++face) {
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                               GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, shadowMap,
-                               0);
-        glClear(GL_DEPTH_BUFFER_BIT);
+      glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
-        depthShader.SetUniform("lightSpaceMatrix", shadowTransforms[face]);
+      depthShader.SetUniform("lightSpaceMatrix", lightSpaceMatrix);
 
-        for (auto &pos : objectPos) {
-          glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
+      for (auto &pos : objectPos) {
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
 
-          depthShader.SetUniform("model", model);
+        depthShader.SetUniform("model", model);
 
-          glBindVertexArray(VAO);
-          glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
-
-        glBindVertexArray(floorVAO);
-
-        depthShader.SetUniform("model", glm::mat4(1.0f));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
       }
+
+      glBindVertexArray(floorVAO);
+
+      depthShader.SetUniform("model", glm::mat4(1.0f));
+      glDrawArrays(GL_TRIANGLES, 0, 6);
 
       // glDisable(GL_CULL_FACE);
       ////////////////////////////////////////////////////////////////////////////////////////
@@ -310,6 +277,7 @@ int main() {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
       objShader.Use();
+      objShader.SetUniform("lightspaceMatrix", lightSpaceMatrix);
 
       objShader.SetUniform("viewPos", camera.Position);
 
