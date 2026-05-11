@@ -52,12 +52,12 @@ int main() {
         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  -0.5f, 0.5f,  0.5f,
         0.0f,  1.0f,  0.0f,  -0.5f, 0.5f,  -0.5f, 0.0f,  1.0f,  0.0f};
 
-    float floorVertices[] = {-10.0, -0.5f, -10.0, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-                             10.0,  -0.5f, -10.0, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
-                             10.0,  -0.5f, 10.0,  0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-                             10.0,  -0.5f, 10.0,  0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-                             -10.0, -0.5f, 10.0,  0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-                             -10.0, -0.5f, -10.0, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f};
+    float floorVertices[] = {-3.0f, -0.5f, -3.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+                             3.0f,  -0.5f, -3.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
+                             3.0f,  -0.5f, 3.0f,  0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+                             3.0f,  -0.5f, 3.0f,  0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+                             -3.0f, -0.5f, 3.0f,  0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+                             -3.0f, -0.5f, -3.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f};
 
     unsigned int VAO, VBO[2];
     glGenVertexArrays(1, &VAO);
@@ -98,7 +98,7 @@ int main() {
 
     std::vector<glm::vec3> objectPos{glm::vec3(0.0f, 10.0f, 0.0f)};
 
-    std::vector<glm::vec3> lightPos{glm::vec3(1.2f, 1.0f, 2.0f)};
+    std::vector<glm::vec3> lightPos{glm::vec3(0.f, 0.f, 0.f)};
 
     std::filesystem::path ProjRoot(PROJECT_ROOT);
     auto loadTexture = [](const std::filesystem::path &path) {
@@ -118,14 +118,15 @@ int main() {
         throw std::runtime_error("Failed to load texture: " + path.string());
       }
 
-      GLenum format = GL_RGB;
+      GLenum format = GL_RGB, sFormet = GL_SRGB;
       if (channels == 1) {
         format = GL_RED;
       } else if (channels == 4) {
         format = GL_RGBA;
+        sFormet = GL_SRGB_ALPHA;
       }
 
-      glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
+      glTexImage2D(GL_TEXTURE_2D, 0, sFormet, width, height, 0, format,
                    GL_UNSIGNED_BYTE, data);
       glGenerateMipmap(GL_TEXTURE_2D);
       stbi_image_free(data);
@@ -141,7 +142,7 @@ int main() {
     objShader.Use();
     objShader.SetUniform("objectColor", glm::vec3(1.0f, 0.5f, 0.31f));
     objShader.SetUniform("lightColor", lightColor);
-    objShader.SetUniform("ambientStrength", 0.1f);
+    objShader.SetUniform("ambientStrength", 0.001f);
 
     objShader.SetUniform("specularStrength", 0.5f);
     objShader.SetUniform("Shininess", 32);
@@ -156,6 +157,8 @@ int main() {
     glBindVertexArray(VAO);
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_FRAMEBUFFER_SRGB);
+    glEnable(GL_MULTISAMPLE);
 
     while (!glfwWindowShouldClose(window.Get_Window_Ptr())) {
       window.processInput(camera);
@@ -184,11 +187,11 @@ int main() {
         lightPos[0] -= 1 * window.deltaTime * camera.Front;
       }
       if (glfwGetKey(window.Get_Window_Ptr(), GLFW_KEY_UP) == GLFW_PRESS) {
-        lightPos[0].y += window.deltaTime * 1;
+        lightPos[0].y += window.deltaTime * 0.5;
       }
 
       if (glfwGetKey(window.Get_Window_Ptr(), GLFW_KEY_DOWN) == GLFW_PRESS) {
-        lightPos[0].y -= window.deltaTime * 1;
+        lightPos[0].y -= window.deltaTime * 0.5;
       }
 
       // 也许可以考虑多个光源，而不是硬编码第一个光源

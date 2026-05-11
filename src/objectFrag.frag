@@ -29,15 +29,16 @@ void main(){
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir,norm);
 
-    float spec;
-    if(gl_FragCoord.x<1280){
-        spec = pow(max(dot(viewDir,reflectDir),0.0),Shininess);
-    }else{
+    float spec = 0;
+    if(diff > 0){
         vec3 halfWay = normalize(viewDir + lightDir);
         spec = pow(max(dot(norm,halfWay),0.0),Shininess);
     }
 
+    float distance = length(FragPos - lightPos);
+    float attenuation = 1.0 / (distance * distance);
+
     vec3 specular = specularStrength * spec * lightColor;
     vec3 baseColor = useTexture ? texture(diffuseTexture, TexCoords).rgb : objectColor;
-    FragColor = vec4((diffuse + ambient + specular) * baseColor,1.0f);
+    FragColor = vec4((ambient + attenuation * (diffuse + specular)) * baseColor,1.0f);
 }
