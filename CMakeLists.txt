@@ -20,6 +20,8 @@ add_executable(app
     src/Cursor.cpp
     src/Global.hpp
     src/Main.cpp
+    src/Mesh.cpp
+    src/Model.cpp
 )
 
 # ===== 头文件目录 =====

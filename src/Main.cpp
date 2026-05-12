@@ -59,6 +59,17 @@ int main() {
                              -3.0f, -0.5f, 3.0f,  0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
                              -3.0f, -0.5f, -3.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f};
 
+    float normalMapPlaneVertices[] = {
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,  1.0f,  0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f,  1.0f,  0.0f, 1.0f, -1.0f, 0.0f,  0.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+        1.0f,  0.0f,  0.0f, 0.0f, 1.0f,  0.0f,  1.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+        1.0f,  1.0f,  1.0f, 1.0f, 0.0f,  0.0f,  0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+        0.0f,  0.0f,  0.0f, 1.0f, 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        0.0f,  -1.0f, 1.0f, 0.0f, 0.0f,  0.0f,  1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+        0.0f,  0.0f,  1.0f, 0.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f,  1.0f,  0.0f, 0.0f, 0.0f,  1.0f,  0.0f,
+    };
+
     unsigned int VAO, VBO[2];
     glGenVertexArrays(1, &VAO);
     glGenBuffers(2, VBO);
@@ -96,12 +107,38 @@ int main() {
     glEnableVertexAttribArray(2);
     glBindVertexArray(0);
 
+    unsigned int normalMapPlaneVAO, normalMapPlaneVBO;
+    glGenVertexArrays(1, &normalMapPlaneVAO);
+    glGenBuffers(1, &normalMapPlaneVBO);
+
+    glBindVertexArray(normalMapPlaneVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, normalMapPlaneVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(normalMapPlaneVertices),
+                 normalMapPlaneVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float),
+                          (void *)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float),
+                          (void *)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 14 * sizeof(float),
+                          (void *)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float),
+                          (void *)(8 * sizeof(float)));
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float),
+                          (void *)(11 * sizeof(float)));
+    glEnableVertexAttribArray(4);
+    glBindVertexArray(0);
+
     std::vector<glm::vec3> objectPos{glm::vec3(0.0f, 10.0f, 0.0f)};
 
-    std::vector<glm::vec3> lightPos{glm::vec3(0.f, 0.f, 0.f)};
+    std::vector<glm::vec3> lightPos{glm::vec3(0.5f, 0.5f, 1.5f)};
 
     std::filesystem::path ProjRoot(PROJECT_ROOT);
-    auto loadTexture = [](const std::filesystem::path &path) {
+    auto loadTexture = [](const std::filesystem::path &path,
+                          bool useSRGB = true) {
       unsigned int texture;
       glGenTextures(1, &texture);
       glBindTexture(GL_TEXTURE_2D, texture);
@@ -118,15 +155,21 @@ int main() {
         throw std::runtime_error("Failed to load texture: " + path.string());
       }
 
-      GLenum format = GL_RGB, sFormet = GL_SRGB;
+      GLenum format = GL_RGB;
       if (channels == 1) {
         format = GL_RED;
       } else if (channels == 4) {
         format = GL_RGBA;
-        sFormet = GL_SRGB_ALPHA;
       }
 
-      glTexImage2D(GL_TEXTURE_2D, 0, sFormet, width, height, 0, format,
+      GLenum internalFormat = format;
+      if (useSRGB && format == GL_RGB) {
+        internalFormat = GL_SRGB;
+      } else if (useSRGB && format == GL_RGBA) {
+        internalFormat = GL_SRGB_ALPHA;
+      }
+
+      glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format,
                    GL_UNSIGNED_BYTE, data);
       glGenerateMipmap(GL_TEXTURE_2D);
       stbi_image_free(data);
@@ -134,6 +177,10 @@ int main() {
       return texture;
     };
     unsigned int woodTexture = loadTexture(ProjRoot / "textures/wood.png");
+    unsigned int brickWallTexture =
+        loadTexture(ProjRoot / "textures/brickwall.jpg");
+    unsigned int brickWallNormalTexture =
+        loadTexture(ProjRoot / "textures/brickwall_normal.jpg", false);
 
     Shader objShader(ProjRoot / "src/vertShader.vert",
                      ProjRoot / "src/objectFrag.frag");
@@ -153,6 +200,18 @@ int main() {
 
     lightShader.Use();
     lightShader.SetUniform("lightColor", lightColor);
+
+    Shader normalMapShader(ProjRoot / "src/n_map.vert",
+                           ProjRoot / "src/n_map.frag");
+    normalMapShader.Use();
+    normalMapShader.SetUniform("objectColor", glm::vec3(1.0f));
+    normalMapShader.SetUniform("lightColor", lightColor);
+    normalMapShader.SetUniform("ambientStrength", 0.05f);
+    normalMapShader.SetUniform("specularStrength", 0.4f);
+    normalMapShader.SetUniform("Shininess", 32);
+    normalMapShader.SetUniform("diffuseTexture", 0);
+    normalMapShader.SetUniform("normalTexture", 1);
+    normalMapShader.SetUniform("useTexture", true);
 
     glBindVertexArray(VAO);
 
@@ -214,6 +273,19 @@ int main() {
       objShader.SetUniform("model", glm::mat4(1.0f));
       glDrawArrays(GL_TRIANGLES, 0, 6);
 
+      normalMapShader.Use();
+      normalMapShader.SetUniform("view", view);
+      normalMapShader.SetUniform("projection", projection);
+      normalMapShader.SetUniform("viewPos", camera.Position);
+      normalMapShader.SetUniform("lightPos", lightPos[0]);
+      normalMapShader.SetUniform("model", glm::mat4(1.0f));
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, brickWallTexture);
+      glActiveTexture(GL_TEXTURE1);
+      glBindTexture(GL_TEXTURE_2D, brickWallNormalTexture);
+      glBindVertexArray(normalMapPlaneVAO);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+
       lightShader.Use();
       lightShader.SetUniform("view", view);
       lightShader.SetUniform("projection", projection);
@@ -238,9 +310,13 @@ int main() {
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteVertexArrays(1, &floorVAO);
+    glDeleteVertexArrays(1, &normalMapPlaneVAO);
     glDeleteBuffers(2, VBO);
     glDeleteBuffers(1, &floorVBO);
+    glDeleteBuffers(1, &normalMapPlaneVBO);
     glDeleteTextures(1, &woodTexture);
+    glDeleteTextures(1, &brickWallTexture);
+    glDeleteTextures(1, &brickWallNormalTexture);
 
   } catch (std::exception &exce) {
     std::println("{}", exce.what());
