@@ -10,6 +10,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <string>
 #include <unordered_map>
 
 class Shader {
@@ -23,6 +24,9 @@ private:
 public:
   Shader(std::filesystem::path vertexShaderSrc,
          std::filesystem::path fragmentShaderSrc);
+  Shader(std::filesystem::path vertexShaderSrc,
+         std::filesystem::path geometryShaderSrc,
+         std::filesystem::path fragmentShaderSrc);
   void Use() const;
 
   unsigned int Get_ID() const;
@@ -35,7 +39,13 @@ private:
 
   unsigned int InitFragmentShader(const char *fragmentShaderSource);
 
+  unsigned int InitGeometryShader(const char *geometryShaderSource);
+
   unsigned int InitShaderProgram(unsigned int vertexShader,
+                                 unsigned int fragmentShader);
+
+  unsigned int InitShaderProgram(unsigned int vertexShader,
+                                 unsigned int geometryShader,
                                  unsigned int fragmentShader);
 
   template <typename T> void SetUniformImpl(int location, const T &value) const;
