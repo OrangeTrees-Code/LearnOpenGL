@@ -65,6 +65,10 @@ GLFWwindow *Window::WindowInit(bool isTransparent) {
   int fbWidth, fbHeight;
   glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
   glViewport(0, 0, fbWidth, fbHeight);
+
+  this->frameBufferWidth_ = fbWidth;
+  this->frameBufferHeight_ = fbHeight;
+
   glfwSetWindowUserPointer(window, this);
 
   glfwSetFramebufferSizeCallback(

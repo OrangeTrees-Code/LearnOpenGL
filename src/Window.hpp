@@ -33,6 +33,8 @@ public:
 
   void processInput(Camera &camera);
   void UpdateDeltaTime();
+  int GetFrameBufferWidth() const { return frameBufferWidth_; }
+  int GetFrameBufferHeight() const { return frameBufferHeight_; }
 
 private:
   struct GLFWwindowDeleter {
@@ -47,6 +49,9 @@ private:
   float currentFrame = 0.0f;
   float lastFrame = 0.0f;
   WindowPtr window_ptr_;
+
+  int frameBufferWidth_;
+  int frameBufferHeight_;
 
 private:
   GLFWwindow *WindowInit(bool isTransparent);
