@@ -12,6 +12,7 @@
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <print>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -129,7 +130,7 @@ int main() {
         glm::vec3(0.0f, 1.4f, 1.3f), glm::vec3(-2.0f, 0.8f, -1.5f),
         glm::vec3(2.0f, 0.8f, -1.2f), glm::vec3(0.0f, 2.4f, -2.0f)};
     std::vector<glm::vec3> lightColors{
-        glm::vec3(10.0f, 10.0f, 10.0f), glm::vec3(8.0f, 1.3f, 0.7f),
+        glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(8.0f, 1.3f, 0.7f),
         glm::vec3(0.7f, 2.0f, 8.0f), glm::vec3(1.0f, 8.0f, 2.0f)};
 
     std::filesystem::path ProjRoot(PROJECT_ROOT);
@@ -167,13 +168,23 @@ int main() {
     };
     unsigned int woodTexture = loadTexture(ProjRoot / "textures/wood.png");
 
-    unsigned int colorBuffer;
-    glGenTextures(1, &colorBuffer);
-    glBindTexture(GL_TEXTURE_2D, colorBuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, window.GetFrameBufferWidth(),
-                 window.GetFrameBufferHeight(), 0, GL_RGB, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    unsigned int hdrFBO;
+    glGenFramebuffers(1, &hdrFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+
+    unsigned int colorBuffer[2];
+    glGenTextures(2, colorBuffer);
+    for (int i : std::ranges::views::iota(0, 2)) {
+      glBindTexture(GL_TEXTURE_2D, colorBuffer[i]);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, window.GetFrameBufferWidth(),
+                   window.GetFrameBufferHeight(), 0, GL_RGB, GL_FLOAT, NULL);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i,
+                             GL_TEXTURE_2D, colorBuffer[i], 0);
+    }
     glBindTexture(GL_TEXTURE_2D, 0);
 
     unsigned int depthRBO;
@@ -183,11 +194,6 @@ int main() {
                           window.GetFrameBufferWidth(),
                           window.GetFrameBufferHeight());
 
-    unsigned int hdrFBO;
-    glGenFramebuffers(1, &hdrFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                           colorBuffer, 0);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
                               GL_RENDERBUFFER, depthRBO);
 
@@ -197,10 +203,35 @@ int main() {
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    GLuint pingpongFBO[2];
+    GLuint pingpongBuffer[2];
+    glGenFramebuffers(2, pingpongFBO);
+    glGenTextures(2, pingpongBuffer);
+    for (int i : std::ranges::views::iota(0, 2)) {
+      glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]);
+      glBindTexture(GL_TEXTURE_2D, pingpongBuffer[i]);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, window.GetFrameBufferWidth(),
+                   window.GetFrameBufferHeight(), 0, GL_RGB, GL_FLOAT, NULL);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                             GL_TEXTURE_2D, pingpongBuffer[i], 0);
+
+      if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        throw std::runtime_error(
+            "ERROR::FRAMEBUFFER:: Ping-pong framebuffer is not complete!");
+      }
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
     Shader objShader(ProjRoot / "src/vertShader.vert",
                      ProjRoot / "src/hdr_scene.frag");
-    Shader hdrScreenShader(ProjRoot / "src/hdr_screen.vert",
-                           ProjRoot / "src/hdr_screen.frag");
+    Shader combineShader(ProjRoot / "src/hdr_screen.vert",
+                         ProjRoot / "src/combine.frag");
+    Shader blurShader(ProjRoot / "src/hdr_screen.vert",
+                      ProjRoot / "src/blur.frag");
 
     glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
     objShader.Use();
@@ -210,12 +241,16 @@ int main() {
     objShader.SetUniform("Shininess", 32);
     objShader.SetUniform("diffuseTexture", 0);
 
-    hdrScreenShader.Use();
-    hdrScreenShader.SetUniform("hdrBuffer", 0);
-    hdrScreenShader.SetUniform("exposure", 1.0f);
+    blurShader.Use();
+    blurShader.SetUniform("image", 0);
+
+    combineShader.Use();
+    combineShader.SetUniform("scene", 0);
+    combineShader.SetUniform("bloomBlur", 1);
+    combineShader.SetUniform("exposure", 1.0f);
 
     Shader lightShader(ProjRoot / "src/vertShader.vert",
-                       ProjRoot / "src/lightFrag.frag");
+                       ProjRoot / "src/bloom_light.frag");
 
     lightShader.Use();
     lightShader.SetUniform("lightColor", lightColor);
@@ -226,10 +261,13 @@ int main() {
     glDisable(GL_FRAMEBUFFER_SRGB);
     glEnable(GL_MULTISAMPLE);
 
+    GLuint attachments[2] = {GL_COLOR_ATTACHMENT0,GL_COLOR_ATTACHMENT1};
+
     while (!glfwWindowShouldClose(window.Get_Window_Ptr())) {
       window.processInput(camera);
 
       glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+      glDrawBuffers(2, attachments);
       glEnable(GL_DEPTH_TEST);
       glClearColor(0.02f, 0.02f, 0.025f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -303,15 +341,36 @@ int main() {
         glDrawArrays(GL_TRIANGLES, 0, 36);
       }
 
+      bool horizontal = true, is_first_iteration = true;
+      int amount = 10;
+      glDisable(GL_DEPTH_TEST);
+      blurShader.Use();
+      for (int i : std::ranges::views::iota(0, amount)) {
+        glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
+        blurShader.SetUniform("horizontal", horizontal);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, is_first_iteration
+                                         ? colorBuffer[1]
+                                         : pingpongBuffer[!horizontal]);
+        glBindVertexArray(screenQuadVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        horizontal = !horizontal;
+        if (is_first_iteration)
+          is_first_iteration = false;
+      }
+
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
       glDisable(GL_DEPTH_TEST);
       glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT);
 
-      hdrScreenShader.Use();
-      hdrScreenShader.SetUniform("exposure", 1.0f);
+      combineShader.Use();
+      combineShader.SetUniform("exposure", 1.0f);
       glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, colorBuffer);
+      glBindTexture(GL_TEXTURE_2D, colorBuffer[0]);
+      glActiveTexture(GL_TEXTURE1);
+      glBindTexture(GL_TEXTURE_2D, pingpongBuffer[!horizontal]);
       glBindVertexArray(screenQuadVAO);
       glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -330,9 +389,11 @@ int main() {
     glDeleteBuffers(1, &floorVBO);
     glDeleteBuffers(1, &screenQuadVBO);
     glDeleteTextures(1, &woodTexture);
-    glDeleteTextures(1, &colorBuffer);
+    glDeleteTextures(2, colorBuffer);
+    glDeleteTextures(2, pingpongBuffer);
     glDeleteRenderbuffers(1, &depthRBO);
     glDeleteFramebuffers(1, &hdrFBO);
+    glDeleteFramebuffers(2, pingpongFBO);
 
   } catch (std::exception &exce) {
     std::println("{}", exce.what());

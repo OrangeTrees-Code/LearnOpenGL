@@ -1,4 +1,6 @@
 #version 460 core
+layout(location = 0)out vec4 FragColor;
+layout(location = 1)out vec4 BrightColor;
 
 struct Light {
     vec3 Position;
@@ -9,7 +11,7 @@ in vec3 Normal;
 in vec3 FragPos;
 in vec2 TexCoords;
 
-out vec4 FragColor;
+
 
 uniform vec3 objectColor;
 uniform sampler2D diffuseTexture;
@@ -49,4 +51,7 @@ void main(){
     }
 
     FragColor = vec4(lighting, 1.0);
+
+    float brightness = dot(lighting, vec3(0.2126, 0.7152, 0.0722));
+    BrightColor = brightness > 1.0 ? vec4(lighting, 1.0) : vec4(0.0, 0.0, 0.0, 1.0);
 }
