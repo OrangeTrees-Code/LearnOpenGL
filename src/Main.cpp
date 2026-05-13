@@ -60,14 +60,23 @@ int main() {
                              -3.0f, -0.5f, -3.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f};
 
     float normalMapPlaneVertices[] = {
-        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,  1.0f,  0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f,  1.0f,  0.0f, 1.0f, -1.0f, 0.0f,  0.0f, 0.0f, 1.0f, 1.0f, 0.0f,
-        1.0f,  0.0f,  0.0f, 0.0f, 1.0f,  0.0f,  1.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-        1.0f,  1.0f,  1.0f, 1.0f, 0.0f,  0.0f,  0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        0.0f,  0.0f,  0.0f, 1.0f, 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-        0.0f,  -1.0f, 1.0f, 0.0f, 0.0f,  0.0f,  1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
-        0.0f,  0.0f,  1.0f, 0.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f,  1.0f,  0.0f, 0.0f, 0.0f,  1.0f,  0.0f,
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f,  1.0f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+
+        1.0f,  -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        0.0f,  1.0f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+
+        1.0f,  1.0f,  0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        1.0f,  1.0f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+
+        1.0f,  1.0f,  0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        1.0f,  1.0f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+
+        -1.0f, 1.0f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        1.0f,  1.0f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f,  1.0f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
     };
 
     unsigned int VAO, VBO[2];
@@ -177,10 +186,11 @@ int main() {
       return texture;
     };
     unsigned int woodTexture = loadTexture(ProjRoot / "textures/wood.png");
-    unsigned int brickWallTexture =
-        loadTexture(ProjRoot / "textures/brickwall.jpg");
-    unsigned int brickWallNormalTexture =
-        loadTexture(ProjRoot / "textures/brickwall_normal.jpg", false);
+    unsigned int bricks2Texture = loadTexture(ProjRoot / "textures/bricks2.jpg");
+    unsigned int bricks2NormalTexture =
+        loadTexture(ProjRoot / "textures/bricks2_normal.jpg", false);
+    unsigned int bricks2DepthTexture =
+        loadTexture(ProjRoot / "textures/bricks2_disp.jpg", false);
 
     Shader objShader(ProjRoot / "src/vertShader.vert",
                      ProjRoot / "src/objectFrag.frag");
@@ -206,11 +216,13 @@ int main() {
     normalMapShader.Use();
     normalMapShader.SetUniform("objectColor", glm::vec3(1.0f));
     normalMapShader.SetUniform("lightColor", lightColor);
-    normalMapShader.SetUniform("ambientStrength", 0.05f);
+    normalMapShader.SetUniform("ambientStrength", 0.001f);
     normalMapShader.SetUniform("specularStrength", 0.4f);
     normalMapShader.SetUniform("Shininess", 32);
     normalMapShader.SetUniform("diffuseTexture", 0);
     normalMapShader.SetUniform("normalTexture", 1);
+    normalMapShader.SetUniform("depthMap", 2);
+    normalMapShader.SetUniform("height_scale", 0.1f);
     normalMapShader.SetUniform("useTexture", true);
 
     glBindVertexArray(VAO);
@@ -270,7 +282,8 @@ int main() {
       glBindTexture(GL_TEXTURE_2D, woodTexture);
       glBindVertexArray(floorVAO);
       objShader.SetUniform("useTexture", true);
-      objShader.SetUniform("model", glm::mat4(1.0f));
+      objShader.SetUniform("model",
+                           glm::translate(glm::mat4(1.0f), glm::vec3(0, -1.5, 0)));
       glDrawArrays(GL_TRIANGLES, 0, 6);
 
       normalMapShader.Use();
@@ -280,9 +293,11 @@ int main() {
       normalMapShader.SetUniform("lightPos", lightPos[0]);
       normalMapShader.SetUniform("model", glm::mat4(1.0f));
       glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, brickWallTexture);
+      glBindTexture(GL_TEXTURE_2D, bricks2Texture);
       glActiveTexture(GL_TEXTURE1);
-      glBindTexture(GL_TEXTURE_2D, brickWallNormalTexture);
+      glBindTexture(GL_TEXTURE_2D, bricks2NormalTexture);
+      glActiveTexture(GL_TEXTURE2);
+      glBindTexture(GL_TEXTURE_2D, bricks2DepthTexture);
       glBindVertexArray(normalMapPlaneVAO);
       glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -315,8 +330,9 @@ int main() {
     glDeleteBuffers(1, &floorVBO);
     glDeleteBuffers(1, &normalMapPlaneVBO);
     glDeleteTextures(1, &woodTexture);
-    glDeleteTextures(1, &brickWallTexture);
-    glDeleteTextures(1, &brickWallNormalTexture);
+    glDeleteTextures(1, &bricks2Texture);
+    glDeleteTextures(1, &bricks2NormalTexture);
+    glDeleteTextures(1, &bricks2DepthTexture);
 
   } catch (std::exception &exce) {
     std::println("{}", exce.what());
