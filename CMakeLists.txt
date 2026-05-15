@@ -11,6 +11,9 @@ find_package(OpenGL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLFW REQUIRED glfw3)
 
+# ===== 查找 Assimp =====
+find_package(assimp REQUIRED)
+
 # ===== 可执行文件 =====
 add_executable(app
     src/Window.cpp
@@ -20,6 +23,8 @@ add_executable(app
     src/Cursor.cpp
     src/Global.hpp
     src/Main.cpp
+    src/Mesh.cpp
+    src/Model.cpp
 )
 
 # ===== 头文件目录 =====
@@ -34,6 +39,7 @@ target_include_directories(app PRIVATE
 target_link_libraries(app
     ${GLFW_LIBRARIES}
     OpenGL::GL
+    assimp::assimp
 )
 
 # ===== Linux 额外依赖（有些环境需要）=====

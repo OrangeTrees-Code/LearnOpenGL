@@ -72,6 +72,12 @@ inline void Shader::SetUniformImpl<bool>(int location,
 }
 
 template <>
+inline void Shader::SetUniformImpl<glm::vec2>(int location,
+                                              const glm::vec2 &value) const {
+  glUniform2fv(location, 1, glm::value_ptr(value));
+}
+
+template <>
 inline void Shader::SetUniformImpl<glm::vec3>(int location,
                                               const glm::vec3 &value) const {
   glUniform3fv(location, 1, glm::value_ptr(value));

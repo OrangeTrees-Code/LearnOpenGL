@@ -12,6 +12,10 @@
 void Window::framebuffer_size_callback(GLFWwindow *window, int width,
                                        int height) {
   glViewport(0, 0, width, height);
+  frameBufferWidth_ = width;
+  frameBufferHeight_ = height;
+  MainCamera.ViewWidth = width;
+  MainCamera.ViewHeight = height;
 }
 
 void Window::processInput(Camera &camera) {
@@ -65,6 +69,10 @@ GLFWwindow *Window::WindowInit(bool isTransparent) {
   int fbWidth, fbHeight;
   glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
   glViewport(0, 0, fbWidth, fbHeight);
+
+  this->frameBufferWidth_ = fbWidth;
+  this->frameBufferHeight_ = fbHeight;
+
   glfwSetWindowUserPointer(window, this);
 
   glfwSetFramebufferSizeCallback(

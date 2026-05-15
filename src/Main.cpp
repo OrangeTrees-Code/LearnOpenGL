@@ -1,25 +1,30 @@
 // OpenGL loader
+#include <cstddef>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <glad/glad.h>
 // Windowing
 #include "Camera.hpp"
+#include "Model.hpp"
 #include "Shader.tpp"
 #include "Window.hpp"
 #include <GLFW/glfw3.h>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <print>
+#include <ranges>
 #include <stdexcept>
+#include <string>
+#include <vector>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 int main() {
   try {
     Camera camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f),
-                  glm::vec3(0.0f, 1.0f, 0.0f), 2560, 1600);
+                  glm::vec3(0.0f, 1.0f, 0.0f), 1920, 1080);
 
-    Window window(2560, 1600, false, camera, 0.5f, 2.0f);
+    Window window(1920, 1080, false, camera, 0.5f, 2.0f);
 
     float vertices[] = {
         -0.5f, -0.5f, -0.5f, 0.0f,  0.0f,  -1.0f, 0.5f,  -0.5f, -0.5f,
@@ -96,137 +101,228 @@ int main() {
     glEnableVertexAttribArray(2);
     glBindVertexArray(0);
 
-    std::vector<glm::vec3> objectPos{glm::vec3(0.0f, 10.0f, 0.0f)};
+    unsigned int G_buffer;
+    glGenFramebuffers(1, &G_buffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, G_buffer);
+    unsigned int gPosition, gNormal, gColorSpec;
 
-    std::vector<glm::vec3> lightPos{glm::vec3(0.f, 0.f, 0.f)};
+    glGenTextures(1, &gPosition);
+    glBindTexture(GL_TEXTURE_2D, gPosition);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, window.GetFrameBufferWidth(),
+                 window.GetFrameBufferHeight(), 0, GL_RGB, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           gPosition, 0);
+
+    glGenTextures(1, &gNormal);
+    glBindTexture(GL_TEXTURE_2D, gNormal);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, window.GetFrameBufferWidth(),
+                 window.GetFrameBufferHeight(), 0, GL_RGB, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D,
+                           gNormal, 0);
+
+    glGenTextures(1, &gColorSpec);
+    glBindTexture(GL_TEXTURE_2D, gColorSpec);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, window.GetFrameBufferWidth(),
+                 window.GetFrameBufferHeight(), 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D,
+                           gColorSpec, 0);
+
+    GLuint attachments[3] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
+                             GL_COLOR_ATTACHMENT2};
+
+    glDrawBuffers(3, attachments);
+
+    unsigned int depthRBO;
+    glGenRenderbuffers(1, &depthRBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthRBO);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24,
+                          window.GetFrameBufferWidth(),
+                          window.GetFrameBufferHeight());
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                              GL_RENDERBUFFER, depthRBO);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+      throw std::runtime_error(
+          "ERROR::FRAMEBUFFER:: Framebuffer is not complete!");
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    float quadVertices[] = {
+        // positions   // texcoords
+        -1.0f, 1.0f,  0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
+        1.0f,  -1.0f, 1.0f, 0.0f, -1.0f, 1.0f,  0.0f, 1.0f,
+        1.0f,  -1.0f, 1.0f, 0.0f, 1.0f,  1.0f,  1.0f, 1.0f,
+    };
+    unsigned int quadVAO, quadVBO;
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices,
+                 GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
+                          (void *)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
+                          (void *)(2 * sizeof(float)));
+    glBindVertexArray(0);
+
+    std::vector<glm::vec3> objectPos{
+        glm::vec3(-4.0f, 0.0f, -4.0f),
+        glm::vec3(4.0f, 0.0f, -4.0f),
+        glm::vec3(-4.0f, 0.0f, 4.0f),
+        glm::vec3(4.0f, 0.0f, 4.0f),
+    };
+
+    std::vector<glm::vec3> lightPositions;
+    std::vector<glm::vec3> lightColors;
+    lightPositions.reserve(32);
+    lightColors.reserve(32);
+
+    for (int z = 0; z < 4; ++z) {
+      for (int x = 0; x < 8; ++x) {
+        lightPositions.emplace_back(-7.0f + x * 2.0f, 1.0f + (x % 3) * 0.6f,
+                                    -6.0f + z * 4.0f);
+        lightColors.emplace_back(0.5f + (x % 3) * 0.25f, 0.5f + (z % 2) * 0.35f,
+                                 0.7f + ((x + z) % 2) * 0.3f);
+      }
+    }
 
     std::filesystem::path ProjRoot(PROJECT_ROOT);
-    auto loadTexture = [](const std::filesystem::path &path) {
-      unsigned int texture;
-      glGenTextures(1, &texture);
-      glBindTexture(GL_TEXTURE_2D, texture);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                      GL_LINEAR_MIPMAP_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-      int width, height, channels;
-      unsigned char *data =
-          stbi_load(path.c_str(), &width, &height, &channels, 0);
-      if (data == nullptr) {
-        throw std::runtime_error("Failed to load texture: " + path.string());
-      }
+    Model nanosuit(ProjRoot / "res/nanosuit_reflection/nanosuit.obj");
 
-      GLenum format = GL_RGB, sFormet = GL_SRGB;
-      if (channels == 1) {
-        format = GL_RED;
-      } else if (channels == 4) {
-        format = GL_RGBA;
-        sFormet = GL_SRGB_ALPHA;
-      }
-
-      glTexImage2D(GL_TEXTURE_2D, 0, sFormet, width, height, 0, format,
-                   GL_UNSIGNED_BYTE, data);
-      glGenerateMipmap(GL_TEXTURE_2D);
-      stbi_image_free(data);
-
-      return texture;
-    };
-    unsigned int woodTexture = loadTexture(ProjRoot / "textures/wood.png");
-
-    Shader objShader(ProjRoot / "src/vertShader.vert",
-                     ProjRoot / "src/objectFrag.frag");
-
-    glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
-    objShader.Use();
-    objShader.SetUniform("objectColor", glm::vec3(1.0f, 0.5f, 0.31f));
-    objShader.SetUniform("lightColor", lightColor);
-    objShader.SetUniform("ambientStrength", 0.001f);
-
-    objShader.SetUniform("specularStrength", 0.5f);
-    objShader.SetUniform("Shininess", 32);
-    objShader.SetUniform("diffuseTexture", 0);
-
+    Shader gBufferShader(ProjRoot / "src/vertShader.vert",
+                         ProjRoot / "src/g_buffer.frag");
+    Shader quadShader(ProjRoot / "src/screenQuad.vert",
+                      ProjRoot / "src/quadDisplay.frag");
+    Shader lightingPassShader(ProjRoot / "src/lighting_pass.vert",
+                              ProjRoot / "src/lighting_pass.frag");
     Shader lightShader(ProjRoot / "src/vertShader.vert",
                        ProjRoot / "src/lightFrag.frag");
 
-    lightShader.Use();
-    lightShader.SetUniform("lightColor", lightColor);
+    gBufferShader.Use();
+    gBufferShader.SetUniform("texture_diffuse_0", 0);
+    gBufferShader.SetUniform("texture_specular_0", 1);
+
+    quadShader.Use();
+    quadShader.SetUniform("gPosition", 0);
+    quadShader.SetUniform("gNormal", 1);
+    quadShader.SetUniform("gColorSpec", 2);
+
+    lightingPassShader.Use();
+    lightingPassShader.SetUniform("gPosition", 0);
+    lightingPassShader.SetUniform("gNormal", 1);
+    lightingPassShader.SetUniform("gColorSpec", 2);
+    for (std::size_t i = 0; i < lightPositions.size(); ++i) {
+      const std::string lightName = "lights[" + std::to_string(i) + "]";
+      lightingPassShader.SetUniform(lightName + ".position", lightPositions[i]);
+      lightingPassShader.SetUniform(lightName + ".color", lightColors[i]);
+    }
 
     glBindVertexArray(VAO);
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_FRAMEBUFFER_SRGB);
+    // glEnable(GL_FRAMEBUFFER_SRGB);
+    glDisable(GL_FRAMEBUFFER_SRGB);
     glEnable(GL_MULTISAMPLE);
+
+    // GLint encoding;
+    // glGetFramebufferAttachmentParameteriv(
+    //     GL_FRAMEBUFFER, GL_BACK_LEFT,
+    //     GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, &encoding);
+
+    // if (encoding == GL_SRGB) {
+    //   std::println("SRGB");
+    // } else if (encoding == GL_LINEAR) {
+    //   std::println("LINEAR RGB");
+    // }
 
     while (!glfwWindowShouldClose(window.Get_Window_Ptr())) {
       window.processInput(camera);
 
       glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-      objShader.Use();
-
-      objShader.SetUniform("viewPos", camera.Position);
-
-      glEnable(GL_BLEND);
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
       auto view = camera.GetViewMatrix();
       auto projection = camera.GetProjectionMatrix();
 
-      objShader.SetUniform("view", view);
-      objShader.SetUniform("projection", projection);
-
       if (glfwGetKey(window.Get_Window_Ptr(), GLFW_KEY_LEFT) == GLFW_PRESS) {
-        lightPos[0] += 1 * window.deltaTime * camera.Front;
+        lightPositions[0] += 1 * window.deltaTime * camera.Front;
       }
 
       if (glfwGetKey(window.Get_Window_Ptr(), GLFW_KEY_RIGHT) == GLFW_PRESS) {
-        lightPos[0] -= 1 * window.deltaTime * camera.Front;
+        lightPositions[0] -= 1 * window.deltaTime * camera.Front;
       }
       if (glfwGetKey(window.Get_Window_Ptr(), GLFW_KEY_UP) == GLFW_PRESS) {
-        lightPos[0].y += window.deltaTime * 0.5;
+        lightPositions[0].y += window.deltaTime * 0.5;
       }
 
       if (glfwGetKey(window.Get_Window_Ptr(), GLFW_KEY_DOWN) == GLFW_PRESS) {
-        lightPos[0].y -= window.deltaTime * 0.5;
+        lightPositions[0].y -= window.deltaTime * 0.5;
       }
 
-      // 也许可以考虑多个光源，而不是硬编码第一个光源
-      objShader.SetUniform("lightPos", lightPos[0]);
+      glBindFramebuffer(GL_FRAMEBUFFER, G_buffer);
+      glEnable(GL_DEPTH_TEST);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+      gBufferShader.Use();
+      gBufferShader.SetUniform("view", view);
+      gBufferShader.SetUniform("projection", projection);
 
       for (auto &pos : objectPos) {
         glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
-
-        objShader.SetUniform("useTexture", false);
-        objShader.SetUniform("model", model);
-
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        model = glm::scale(model, glm::vec3(0.18f));
+        gBufferShader.SetUniform("model", model);
+        nanosuit.Draw(gBufferShader);
       }
 
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, woodTexture);
-      glBindVertexArray(floorVAO);
-      objShader.SetUniform("useTexture", true);
-      objShader.SetUniform("model", glm::mat4(1.0f));
-      glDrawArrays(GL_TRIANGLES, 0, 6);
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      glDisable(GL_DEPTH_TEST);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-      lightShader.Use();
-      lightShader.SetUniform("view", view);
-      lightShader.SetUniform("projection", projection);
+      // quadShader.Use();
+      lightingPassShader.Use();
+      lightingPassShader.SetUniform("viewPos", camera.Position);
+      lightingPassShader.SetUniform("lights[0].position", lightPositions[0]);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, gPosition);
+      glActiveTexture(GL_TEXTURE1);
+      glBindTexture(GL_TEXTURE_2D, gNormal);
+      glActiveTexture(GL_TEXTURE2);
+      glBindTexture(GL_TEXTURE_2D, gColorSpec);
+
+      glBindVertexArray(quadVAO);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+      glBindVertexArray(0);
+
+      glEnable(GL_DEPTH_TEST);
+
+      glBindFramebuffer(GL_READ_FRAMEBUFFER, G_buffer);
+      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+      glBlitFramebuffer(
+          0, 0, window.GetFrameBufferWidth(), window.GetFrameBufferHeight(), 0,
+          0, window.GetFrameBufferWidth(), window.GetFrameBufferHeight(),
+          GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
       glBindVertexArray(VAO);
 
-      for (auto &pos : lightPos) {
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
-        model = glm::scale(model, glm::vec3(0.2f));
-
-        lightShader.SetUniform("model", model);
-
+      lightShader.Use();
+      lightShader.SetUniform("view", camera.GetViewMatrix());
+      lightShader.SetUniform("projection", camera.GetProjectionMatrix());
+      for (int i : std::ranges::views::iota(0, 32)) {
+        lightShader.SetUniform("lightColor", lightColors[i]);
+        lightShader.SetUniform(
+            "model", glm::translate(glm::mat4(1.0f), lightPositions[i]));
         glDrawArrays(GL_TRIANGLES, 0, 36);
       }
+      glBindVertexArray(0);
 
       window.UpdateDeltaTime();
 
@@ -240,7 +336,8 @@ int main() {
     glDeleteVertexArrays(1, &floorVAO);
     glDeleteBuffers(2, VBO);
     glDeleteBuffers(1, &floorVBO);
-    glDeleteTextures(1, &woodTexture);
+    glDeleteVertexArrays(1, &quadVAO);
+    glDeleteBuffers(1, &quadVBO);
 
   } catch (std::exception &exce) {
     std::println("{}", exce.what());
