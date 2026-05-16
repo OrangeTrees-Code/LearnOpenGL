@@ -12,7 +12,6 @@ uniform bool useTexture;
 uniform float ambientStrength;
 uniform float specularStrength;
 uniform vec3 lightPos;
-uniform vec3 viewPos;
 uniform int Shininess;
 
 
@@ -26,7 +25,7 @@ void main(){
     vec3 diffuse = diff * lightColor;
 
 
-    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 viewDir = normalize(-FragPos);
     vec3 reflectDir = reflect(-lightDir,norm);
 
     float spec = 0;

@@ -2,9 +2,10 @@
 out vec4 FragColor;
 in vec2 TexCoords;
 
-uniform sampler2D gPosition;
+uniform sampler2D gPositionDepth;
 uniform sampler2D gNormal;
 uniform sampler2D gColorSpec;
+uniform sampler2D texture_ssao;
 
 struct Light{
     vec3 position;
@@ -13,7 +14,6 @@ struct Light{
 
 const int NR_LIGHTS = 32;
 uniform Light lights[NR_LIGHTS];
-uniform vec3 viewPos;
 
 const float ambientStrength = 0.08;
 
@@ -21,14 +21,14 @@ const float shininess = 32;
 
 const float intensity = 3.0;
 void main(){
-    vec3 FragPos = texture(gPosition,TexCoords).xyz;
+    vec3 FragPos = texture(gPositionDepth,TexCoords).xyz;
     vec3 Normal = normalize(texture(gNormal,TexCoords).xyz);
     vec3 Albedo = texture(gColorSpec,TexCoords).rgb;
     float specWeight = texture(gColorSpec,TexCoords).a;
 
-    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 viewDir = normalize(-FragPos);
 
-    vec3 lighting = intensity * ambientStrength * Albedo;
+    vec3 lighting = intensity * ambientStrength * Albedo * texture(texture_ssao,TexCoords).r;
     for(int i = 0; i < NR_LIGHTS; ++i)
     {
         // 漫反射

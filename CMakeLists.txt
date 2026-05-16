@@ -25,6 +25,7 @@ add_executable(app
     src/Main.cpp
     src/Mesh.cpp
     src/Model.cpp
+    src/SSAO_Engine.cpp
 )
 
 # ===== 头文件目录 =====
