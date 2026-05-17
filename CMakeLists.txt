@@ -20,6 +20,7 @@ add_executable(app
     src/Cursor.cpp
     src/Global.hpp
     src/Main.cpp
+    src/Primitive.cpp
 )
 
 # ===== 头文件目录 =====

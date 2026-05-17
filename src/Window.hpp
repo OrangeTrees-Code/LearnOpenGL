@@ -31,7 +31,7 @@ public:
   };
   GLFWwindow *Get_Window_Ptr() { return window_ptr_.get(); }
 
-  void processInput(Camera &camera);
+  void processInput(Camera &camera, std::vector<glm::vec3> &lightPos);
   void UpdateDeltaTime();
 
 private:

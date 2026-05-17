@@ -82,3 +82,9 @@ inline void Shader::SetUniformImpl<glm::mat4>(int location,
                                               const glm::mat4 &value) const {
   glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
 }
+
+template <>
+inline void Shader::SetUniformImpl<glm::mat3>(int location,
+                                              const glm::mat3 &value) const {
+  glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(value));
+}

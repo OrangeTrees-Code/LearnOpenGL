@@ -8,13 +8,14 @@
 #include <glm/ext/quaternion_geometric.hpp>
 #include <glm/trigonometric.hpp>
 #include <iostream>
+#include <vector>
 
 void Window::framebuffer_size_callback(GLFWwindow *window, int width,
                                        int height) {
   glViewport(0, 0, width, height);
 }
 
-void Window::processInput(Camera &camera) {
+void Window::processInput(Camera &camera, std::vector<glm::vec3> &lightPos) {
   if (glfwGetKey(this->Get_Window_Ptr(), GLFW_KEY_ESCAPE) == GLFW_PRESS) {
     glfwSetWindowShouldClose(this->Get_Window_Ptr(), true);
   }
@@ -35,6 +36,27 @@ void Window::processInput(Camera &camera) {
   }
   if (glfwGetKey(this->Get_Window_Ptr(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
     MainCamera.ProcessKeyInput(Direction::Down, deltaTime);
+  }
+  if (glfwGetKey(this->Get_Window_Ptr(), GLFW_KEY_LEFT) == GLFW_PRESS) {
+    for (auto &pos : lightPos) {
+      pos += 1 * this->deltaTime * camera.Front;
+    }
+  }
+  if (glfwGetKey(this->Get_Window_Ptr(), GLFW_KEY_RIGHT) == GLFW_PRESS) {
+    for (auto &pos : lightPos) {
+      pos -= 1 * this->deltaTime * camera.Front;
+    }
+  }
+  if (glfwGetKey(this->Get_Window_Ptr(), GLFW_KEY_UP) == GLFW_PRESS) {
+    for (auto &pos : lightPos) {
+      pos.y += this->deltaTime * 0.5;
+    }
+  }
+
+  if (glfwGetKey(this->Get_Window_Ptr(), GLFW_KEY_DOWN) == GLFW_PRESS) {
+    for (auto &pos : lightPos) {
+      pos.y -= this->deltaTime * 0.5;
+    }
   }
 }
 
