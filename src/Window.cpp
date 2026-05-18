@@ -8,11 +8,14 @@
 #include <glm/ext/quaternion_geometric.hpp>
 #include <glm/trigonometric.hpp>
 #include <iostream>
-#include <vector>
 
 void Window::framebuffer_size_callback(GLFWwindow *window, int width,
                                        int height) {
   glViewport(0, 0, width, height);
+  frameBufferWidth_ = width;
+  frameBufferHeight_ = height;
+  MainCamera.ViewWidth = width;
+  MainCamera.ViewHeight = height;
 }
 
 void Window::processInput(Camera &camera, std::vector<glm::vec3> &lightPos) {
@@ -87,6 +90,10 @@ GLFWwindow *Window::WindowInit(bool isTransparent) {
   int fbWidth, fbHeight;
   glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
   glViewport(0, 0, fbWidth, fbHeight);
+
+  this->frameBufferWidth_ = fbWidth;
+  this->frameBufferHeight_ = fbHeight;
+
   glfwSetWindowUserPointer(window, this);
 
   glfwSetFramebufferSizeCallback(
@@ -133,4 +140,11 @@ void Window::scroll_callback(GLFWwindow *window, double xoffset,
   xoffset *= MainCursor.ScrollSensitivity;
   yoffset *= MainCursor.ScrollSensitivity;
   MainCamera.ProcessScroll(xoffset, yoffset);
+}
+
+void Window::ResetViewPort(int width, int height) {
+  glViewport(0, 0, width, height);
+}
+void Window::ResetViewPort() {
+  this->ResetViewPort(frameBufferWidth_, frameBufferHeight_);
 }

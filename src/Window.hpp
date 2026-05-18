@@ -30,9 +30,13 @@ public:
     }
   };
   GLFWwindow *Get_Window_Ptr() { return window_ptr_.get(); }
+  void ResetViewPort(int width, int height);
+  void ResetViewPort();
 
   void processInput(Camera &camera, std::vector<glm::vec3> &lightPos);
   void UpdateDeltaTime();
+  int GetFrameBufferWidth() const { return frameBufferWidth_; }
+  int GetFrameBufferHeight() const { return frameBufferHeight_; }
 
 private:
   struct GLFWwindowDeleter {
@@ -47,6 +51,9 @@ private:
   float currentFrame = 0.0f;
   float lastFrame = 0.0f;
   WindowPtr window_ptr_;
+
+  int frameBufferWidth_;
+  int frameBufferHeight_;
 
 private:
   GLFWwindow *WindowInit(bool isTransparent);

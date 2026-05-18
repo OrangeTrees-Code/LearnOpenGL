@@ -12,6 +12,7 @@ uniform sampler2D metallicMap;
 uniform sampler2D roughnessMap;
 uniform sampler2D aoMap;
 
+uniform samplerCube irradianceMap;
 
 struct Light{
     vec3 Position;
@@ -23,6 +24,7 @@ const float PI = 3.14159265358979;
 uniform Light lights[N_LIGHTS];
 
 vec3 fresnelSchlick(float cosTheta, vec3 F0);
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness);
 float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
@@ -34,9 +36,16 @@ void main(){
     float roughness = texture(roughnessMap,TexCoords).r;
     float ao = texture(aoMap,TexCoords).r;
 
+
     vec3 N = normalize(getNormalFromMap());
     vec3 V = normalize(camPos - FragPos);
     vec3 Lo = vec3(0.0);
+    vec3 irradiance = texture(irradianceMap,N).rgb;
+    vec3 diffuse = irradiance * albedo;
+
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0,albedo,metallic);
+
     for(int i = 0;i < N_LIGHTS;i++){
         vec3 Li = normalize(lights[i].Position - FragPos);
         vec3 H = normalize(Li + V);
@@ -45,9 +54,8 @@ void main(){
         float attenuation = 1.0 / pow(distance + 1,2);
         vec3 radiance = lights[i].Color * attenuation;
 
-        vec3 F0 = vec3(0.04);
-        F0 = mix(F0,albedo,metallic);
-        vec3 F = fresnelSchlick(max(dot(H,V),0.0),F0);
+
+        vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0); 
         float D = DistributionGGX(N,H,roughness);
         float G = GeometrySmith(N,V,Li,roughness);
 
@@ -56,15 +64,15 @@ void main(){
         vec3 specular     = nominator / denominator;  
 
         vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-
-        kD *= 1.0 - metallic; 
+        vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
         float NdotLi = max(dot(N, Li), 0.0);        
         Lo += (kD * albedo / PI + specular) * radiance * NdotLi;
     }
 
-    vec3 ambient = vec3(0.03) * albedo * ao;
+    vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
+    vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+    vec3 ambient = kD * diffuse * ao;
     vec3 color   = ambient + Lo;  
 
     color = color / (color + vec3(1.0));
@@ -75,8 +83,13 @@ void main(){
 
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
-    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-} 
+    return F0 + (vec3(1.0) - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+}
 
 float DistributionGGX(vec3 N, vec3 H, float roughness)
 {

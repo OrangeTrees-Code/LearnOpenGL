@@ -21,6 +21,7 @@ add_executable(app
     src/Global.hpp
     src/Main.cpp
     src/Primitive.cpp
+    src/Texture.cpp
 )
 
 # ===== 头文件目录 =====
