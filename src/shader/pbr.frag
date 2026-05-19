@@ -11,6 +11,8 @@ uniform sampler2D normalMap;
 uniform sampler2D metallicMap;
 uniform sampler2D roughnessMap;
 uniform sampler2D aoMap;
+uniform samplerCube prefilterMap;
+uniform sampler2D   brdfLUT;  
 
 uniform samplerCube irradianceMap;
 
@@ -21,6 +23,7 @@ struct Light{
 
 const int N_LIGHTS = 4;
 const float PI = 3.14159265358979;
+const float MAX_REFLECTION_LOD = 4.0;
 uniform Light lights[N_LIGHTS];
 
 vec3 fresnelSchlick(float cosTheta, vec3 F0);
@@ -70,9 +73,17 @@ void main(){
         Lo += (kD * albedo / PI + specular) * radiance * NdotLi;
     }
 
-    vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
+    vec3 R = reflect(-V,N);
+    vec3 prefilteredColor = textureLod(prefilterMap,R,roughness * MAX_REFLECTION_LOD).rgb;
+
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
+    vec2 envBRDF  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+
+
+    vec3 kS = F;
     vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
-    vec3 ambient = kD * diffuse * ao;
+    vec3 ambient = (kD * diffuse + specular) * ao;
     vec3 color   = ambient + Lo;  
 
     color = color / (color + vec3(1.0));
