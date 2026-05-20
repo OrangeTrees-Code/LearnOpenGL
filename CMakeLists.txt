@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(OpenGLApp)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ===== 查找 OpenGL =====
@@ -11,12 +11,16 @@ find_package(OpenGL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLFW REQUIRED glfw3)
 
+# ===== 查找 FreeType =====
+find_package(Freetype REQUIRED)
+
 # ===== 可执行文件 =====
 add_executable(app
-    src/transform.cpp
+    src/main.cpp
     src/Window.cpp
     src/Shader.cpp
     src/glad.c
+    src/CharacterSet.cpp
 )
 
 # ===== 头文件目录 =====
@@ -28,19 +32,16 @@ target_include_directories(app PRIVATE
 )
 
 # ===== 链接库 =====
-target_link_libraries(app
+target_link_libraries(app PRIVATE
     ${GLFW_LIBRARIES}
     OpenGL::GL
+    Freetype::Freetype
 )
 
 # ===== Linux 额外依赖（有些环境需要）=====
 if(UNIX)
-    target_link_libraries(app dl pthread)
+    target_link_libraries(app PRIVATE dl pthread)
 endif()
-
-# ===== 把 shader 文件复制到运行目录 =====
-# file(COPY src/fragShader3.frag DESTINATION ${CMAKE_BINARY_DIR})
-# file(COPY src/vertShader3.vert DESTINATION ${CMAKE_BINARY_DIR})
 
 target_compile_definitions(app PRIVATE
     PROJECT_ROOT="${CMAKE_SOURCE_DIR}"

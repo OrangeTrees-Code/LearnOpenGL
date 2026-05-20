@@ -1,7 +1,6 @@
 #include "Window.hpp"
 #include "../include/glad/glad.h"
 #include <GLFW/glfw3.h>
-#include <iostream>
 
 void Window::framebuffer_size_callback(GLFWwindow *window, int width,
                                        int height) {
@@ -25,14 +24,12 @@ GLFWwindow *Window::WindowInit(bool isTransparent) {
 
   GLFWwindow *window = glfwCreateWindow(800, 600, "Suki", NULL, NULL);
   if (window == NULL) {
-    std::cout << "Failed to create GLFW window\n";
-    return NULL;
+    throw "Failed to create GLFW window";
   }
   glfwMakeContextCurrent(window);
 
   if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-    std::cout << "Failed to initialize GLAD" << std::endl;
-    return NULL;
+    throw "Failed to initialize GLAD";
   }
 
   glViewport(0, 0, 800, 600);
